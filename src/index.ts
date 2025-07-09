@@ -280,9 +280,17 @@ function rleToArray(token: Token): [number[][], number] {
             for (let i = 0; i < run; i++) {
                 row.push(value);
             }
+            num = '';
         } else if (char === '$') {
             out.push(row);
+            if (num !== '') {
+                let run = parseInt(num);
+                for (let i = 1; i < run; i++) {
+                    out.push([]);
+                }
+            }
             row = [];
+            num = '';
         } else if (char === '!') {
             out.push(row);
         } else {
@@ -340,7 +348,7 @@ function generateRLE(data: Token[], rule: string): string {
                     } else if (char === 'L') {
                         [pattern, width] = transpose(pattern, width);
                         pattern = pattern.reverse();
-                    } else if (char === 'F') {
+                    } else if (char === 'B') {
                         pattern = pattern.map(row => row.reverse()).reverse();
                     } else if (char === 'X') {
                         pattern = pattern.reverse();

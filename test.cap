@@ -1,9 +1,0 @@
-
-rule B3/S23
-
-test = { // test
-    oo$oo!
-    obo!
-}
-
-test 0 2 R
