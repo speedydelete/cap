@@ -1,5 +1,5 @@
 
-rule = B3/S23
+rule B3/S23
 
 // important stuff
 block = 2o$2o!

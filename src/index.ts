@@ -55,7 +55,7 @@ const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
 
 function assertTokenType<T extends TokenType>(token: Token, type: T): void {
     if (token.type !== type) {
-        error(`Expected ${ERROR_TOKEN_TYPES[type]}, got ${ERROR_TOKEN_TYPES[token.type]}`, token);
+        error(`SyntaxError: Expected ${ERROR_TOKEN_TYPES[type]}, got ${ERROR_TOKEN_TYPES[token.type]}`, token);
     }
 }
 
@@ -72,7 +72,7 @@ function addWordTokenType(token: Omit<Token, 'type'>, word: string): Token {
     } else if (word.match(/^[a-z_][a-z0-9_]*$/)) {
         type = 'variable';
     } else {
-        error(`Invalid word: '${word}'`, token);
+        error(`SyntaxError: Invalid word: '${word}'`, token);
     }
     return Object.assign(token, {type});
 }
@@ -179,9 +179,15 @@ function splitByNewlines(tokens: Token[]): Token[][] {
     let out: Token[][] = [];
     let line: Token[] = [];
     let braceCount = 0;
+    let bracketCount = 0;
     let lastOpeningBraceToken = tokens[0];
+    let lastOpeningBracketToken = tokens[0];
     for (let token of tokens) {
-        if (token.type === '{') {
+        if (token.type === '\n' && braceCount === 0 && bracketCount === 0) {
+            out.push(line);
+            line = [];
+            continue;
+        } else if (token.type === '{') {
             braceCount++;
             lastOpeningBraceToken = token;
         } else if (token.type === '}') {
@@ -189,15 +195,22 @@ function splitByNewlines(tokens: Token[]): Token[][] {
             if (braceCount < 0) {
                 error('SyntaxError: Unmatched closing brace', token);
             }
-        } else if (token.type === '\n' && braceCount === 0) {
-            out.push(line);
-            line = [];
-            continue;
+        } else if (token.type === '[') {
+            bracketCount++;
+            lastOpeningBracketToken = token;
+        } else if (token.type === ']') {
+            bracketCount--;
+            if (braceCount < 0) {
+                error('SyntaxError: Unmatched closing bracket', token);
+            }
         }
         line.push(token);
     }
     if (braceCount > 0) {
         error('SyntaxError: Unmatched opening brace', lastOpeningBraceToken);
+    }
+    if (bracketCount > 0) {
+        error('SyntaxError: Unmatched opening bracket', lastOpeningBraceToken);
     }
     out.push(line);
     return out;
@@ -302,7 +315,7 @@ function rleToArray(token: Token): [number[][], number] {
         } else if (char === '!') {
             out.push(row);
         } else {
-            error(`Invalid RLE character: '${char}'`, token);
+            error(`SyntaxError: Invalid RLE character: '${char}'`, token);
         }
     }
     let width = Math.max(...out.map(x => x.length));
@@ -330,6 +343,33 @@ function generateRLE(data: Token[], rule: string): string {
     for (let line of lines) {
         if (line.length === 0) {
             continue;
+        }
+        if (line[0].type === '[') {
+            let bracketCount = 1;
+            let section: Token[] = [];
+            let i = 1;
+            let lastOpeningBracketToken = line[0];
+            while (bracketCount > 0 && i < line.length) {
+                let token = line[i++];
+                if (token.type === '[') {
+                    bracketCount++;
+                    lastOpeningBracketToken = token;
+                } else if (token.type === ']') {
+                    bracketCount--;
+                }
+                section.push(token);
+            }
+            if (bracketCount > 0) {
+                error('SyntaxError: Unmatched opening bracket', lastOpeningBracketToken);
+            }
+            section.pop();
+            line = [{
+                type: 'rle' as TokenType,
+                value: generateRLE(section, rule).split('\n').slice(1).join(''),
+                file: line[0].file,
+                line: line[0].line,
+                col: 0,
+            }].concat(line.slice(i));
         }
         assertTokenType(line[0], 'rle');
         let [pattern, width] = rleToArray(line[0]);
@@ -368,6 +408,8 @@ function generateRLE(data: Token[], rule: string): string {
                         pattern = pattern.map(row => row.reverse());
                         [pattern, width] = transpose(pattern, width);
                         pattern = pattern.map(row => row.reverse());
+                    } else if (char === 'T') {
+                        [pattern, width] = transpose(pattern, width);
                     } else if (char !== 'N') {
                         error('SyntaxError: Invalid transformation', token);
                     }

@@ -34,17 +34,37 @@ bo$2bo$3o! R // glider rotated 90 degrees right
 //     Y (flip around Y axis)
 //     D (flip around diagonal)
 //     A (flip around anti-diagonal)
+//     T (transpose)
 
 // variables
 block = oo$oo!
 block 1 2 // block at (1, 2)
 
-// functions (no arguments yet)
-bi_block = {
+// brace expansion syntax
+{
     block 0 0
     block 3 0
-}
-bi_block 1 1
+} 2 0
+// equivalent to
+block 0 0 2 0
+block 3 0 2 0
+// equivalent to
+block 2 0
+block 5 0
+
+// groups
+[
+    block 0 0
+    block 3 0
+] R
+// this merges the RLE's before applying transformations outside of the brackets
+// while brace expansion merges the RLE's after applying the transformations outside the brackets
+
+// both brace expansions and groups can be assigned to variables
+bi_block = [
+    block 0 0
+    block 3 0
+]
 
 // standard library
 includestd life.cap
