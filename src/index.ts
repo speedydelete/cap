@@ -69,7 +69,7 @@ function addWordTokenType(token: Omit<Token, 'type'>, word: string): Token {
         type = 'number';
     } else if (word.match(/^[A-Z]*$/)) {
         type = 'transform';
-    } else if (word.match(/^[a-z_][a-z0-9_]+$/)) {
+    } else if (word.match(/^[a-z_][a-z0-9_]*$/)) {
         type = 'variable';
     } else {
         error(`Invalid word: '${word}'`, token);
@@ -92,13 +92,21 @@ async function tokenize<T extends boolean>(file: string, requireRule: T): Promis
         } else if (line.startsWith('rule ')) {
             rule = line.slice('rule '.length);
             continue;
-        } else if (line.startsWith('include ')) {
-            let tokenized = await tokenize(path.join(path.dirname(file), line.slice('include '.length)), false);
+        } else if (line.startsWith('include ') || line.startsWith('includestd ')) {
+            let lib: string;
+            if (line.startsWith('include ')) {
+                lib = path.join(path.dirname(file), line.slice('include '.length));
+            } else {
+                lib = path.join(import.meta.dirname, '../stdlib', line.slice('includestd '.length));
+            }
+            let tokenized = await tokenize(lib, false);
             if (tokenized.rule !== undefined) {
                 rule = tokenized.rule;
             }
             out.push(...tokenized.tokens);
             continue;
+        } else if (line.startsWith('includestd ')) {
+
         }
         let word = '';
         let parsingWord = false;

@@ -39,11 +39,14 @@ bo$2bo$3o! R // glider rotated 90 degrees right
 block = oo$oo!
 block 1 2 // block at (1, 2)
 
-// functions (no arguments or returning yet)
+// functions (no arguments yet)
 bi_block = {
     block 0 0
     block 3 0
 }
 bi_block 1 1
+
+// standard library
+includestd life.cap
 
 ```
