@@ -84,6 +84,9 @@ async function tokenize<T extends boolean>(file: string, requireRule: T): Promis
     let rule: string | undefined = '';
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
+        if (line.includes('//')) {
+            line = line.slice(0, line.indexOf('//'));
+        }
         if (line.length === 0) {
             continue;
         } else if (line.startsWith('rule ')) {

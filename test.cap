@@ -1,7 +1,7 @@
 
 rule B3/S23
 
-test = {
+test = { // test
     oo$oo!
     obo!
 }
