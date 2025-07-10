@@ -40,6 +40,7 @@ bo$2bo$3o! R // glider rotated 90 degrees right
 // variables
 block = oo$oo!
 block 1 2 // block at (1, 2)
+// variable names are alphanumeric with underscores, and cannot start with numbers
 
 // brace expansion syntax
 {
@@ -69,5 +70,20 @@ bi_block = [
 
 // standard library
 includestd life.cap
+
+// importing from url's
+import block from data:text/plain;base64,eCA9IDIsIHkgPSAyLCBydWxlID0gQjMvUzIzCm9vJG9vIQ==
+
+// apgcodes
+blinker = xp2_7
+blinker 4 0
+// anything matching /^(x[spq]|yl)\d+_/ is an apgcode
+
+// functions
+my_function = { (a, b)
+    a 0 0
+    b 3 0
+}
+my_function(block, blinker)
 
 ```
