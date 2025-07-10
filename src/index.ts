@@ -29,13 +29,14 @@ function error(msg: string, value: string, file: string, line: number, col: numb
 function error(msg: string, value: string | Token, file?: string, line?: number, col?: number): never {
     let actualStack: Token['stack'];
     if (typeof value === 'object') {
-        actualStack = value.stack;
+        actualStack = value.stack.reverse();
         value = value.value;
     } else {
         // @ts-ignore
         actualStack = [{file, line, col}];
     }
-    for (let {file, line, col} of actualStack) {
+    for (let i = 0; i < actualStack.length; i++) {
+        let {file, line, col} = actualStack[i];
         let filename = file;
         if (homeDir && filename.startsWith(homeDir)) {
             filename = '~' + filename.slice(homeDir.length);
@@ -43,7 +44,7 @@ function error(msg: string, value: string | Token, file?: string, line?: number,
         msg += `\n    at ${filename}:${line + 1}:${col + 1}`;
         if (file in rawFiles) {
             msg += `\n        ${rawFiles[file][line]}`;
-            msg += '\n        ' + ' '.repeat(col) + '^'.repeat(value.length) + ' (here)';
+            msg += '\n        ' + ' '.repeat(col) + (i === actualStack.length - 1 ? '^'.repeat(value.length) : '^') + ' (here)';
         }
     }
     console.log(msg);
@@ -275,7 +276,8 @@ function combinations(sections: (Token | Token[])[]): Token[][] {
 
 function replaceVariablesSimple(tokens: Token[], scope: Scope, force: boolean = true): Token[] {
     let out: Token[] = [];
-    for (let token of tokens) {
+    for (let i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
         if (token.type === 'variable') {
             out.push(...scope.get(token, force));
         } else {
@@ -331,39 +333,42 @@ function replaceVariables(tokens: Token[], scope: Scope = new Scope()): Token[] 
                         }
                         section = section.slice(j + 1);
                         let parenToken = line[++i];
-                        if (parenToken.type !== '(') {
-                            error('SyntaxError: Expected left parentheses', parenToken);
-                        }
-                        let argInputs: Token[][] = [];
-                        let currentArgInput: Token[] = [];
-                        let parenCount = 1;
-                        while (i < line.length) {
-                            let token = line[++i];
-                            if (token.type === ')' || token.type === ']' || token.type === '}') {
-                                parenCount--;
-                                if (parenCount === 0) {
-                                    break;
+                        let argInputs: Token[][];
+                        if (!parenToken && args.length === 0) {
+                            argInputs = [];
+                        } else {
+                            assertTokenType(parenToken, '(');
+                            argInputs = [];
+                            let currentArgInput: Token[] = [];
+                            let parenCount = 1;
+                            while (i < line.length) {
+                                let token = line[++i];
+                                if (token.type === ')' || token.type === ']' || token.type === '}') {
+                                    parenCount--;
+                                    if (parenCount === 0) {
+                                        break;
+                                    }
+                                } else if (token.type === '(' || token.type === '[' || token.type === '{') {
+                                    parenCount++;
+                                } else if (token.type === ',') {
+                                    argInputs.push(currentArgInput);
+                                    currentArgInput = [];
+                                    continue;
                                 }
-                            } else if (token.type === '(' || token.type === '[' || token.type === '{') {
-                                parenCount++;
-                            } else if (token.type === ',') {
-                                argInputs.push(currentArgInput);
-                                currentArgInput = [];
-                                continue;
+                                currentArgInput.push(token);
                             }
-                            currentArgInput.push(token);
-                        }
-                        if (currentArgInput.length > 0) {
-                            argInputs.push(currentArgInput);
+                            if (currentArgInput.length > 0) {
+                                argInputs.push(currentArgInput);
+                            }
                         }
                         if (args.length !== argInputs.length) {
-                            error(`TypeError: Function takes ${args.length} argument${args.length === 1 ? '' : 's'} but ${argInputs.length} argument${argInputs.length === 1 ? ' was' : 's were'} provided`, parenToken);
+                            error(`ArgumentError: Function takes ${args.length} argument${args.length === 1 ? '' : 's'} but ${argInputs.length} argument${argInputs.length === 1 ? ' was' : 's were'} provided`, parenToken);
                         }
                         let funcScope = new Scope(scope);
                         for (let i = 0; i < args.length; i++) {
                             funcScope.set(args[i], argInputs[i]);
                         }
-                        sections.push(replaceVariablesSimple(section, funcScope, false));
+                        sections.push(replaceVariables(section, funcScope));
                     } else {
                         sections.push(section);
                     }
@@ -380,6 +385,24 @@ function replaceVariables(tokens: Token[], scope: Scope = new Scope()): Token[] 
     return out;
 }
 
+function removeParenthesesPairs(tokens: Token[]): Token[] {
+    let out: Token[] = [];
+    for (let i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
+        if (token.type === '(') {
+            if (tokens[i + 1]?.type !== ')') {
+                error('Expected right parentheses', tokens[i + 1] ?? token);
+            }
+            i++;
+        } else {
+            out.push(token);
+        }
+    }
+    return out;
+}
+
+
+const RLE_CHARS = '.ABCDEFGHIJKLMNOPQRSTUVWX';
 
 function rleToGrid(token: Token): [number[][], number] {
     let out: number[][] = [];
@@ -407,6 +430,13 @@ function rleToGrid(token: Token): [number[][], number] {
             num = '';
         } else if (char === '!') {
             out.push(row);
+        } else if (RLE_CHARS.includes(char)) {
+            let run = num === '' ? 1 : parseInt(num);
+            let value = RLE_CHARS.indexOf(char);
+            for (let i = 0; i < run; i++) {
+                row.push(value);
+            }
+            num = '';
         } else {
             error(`SyntaxError: Invalid RLE character: '${char}'`, token);
         }
@@ -505,6 +535,7 @@ function tokensToGrid(data: Token[]): [number[][], number] {
         let width: number;
         if (line[0].type === 'rle') {
             [pattern, width] = rleToGrid(line[0]);
+            line.shift();
         } else if (line[0].type === '[') {
             let bracketCount = 1;
             let section: Token[] = [];
@@ -525,15 +556,17 @@ function tokensToGrid(data: Token[]): [number[][], number] {
             }
             section.pop();
             [pattern, width] = tokensToGrid(section);
+            line.splice(0, i);
         } else if (line[0].type === 'apgcode') {
             [pattern, width] = apgcodeToGrid(line[0]);
+            line.shift();
         } else {
             error(`SyntaxError: Expected RLE, left bracket, or apgcode, got ${ERROR_TOKEN_TYPES[line[0].type]}`, line[0]);
         }
         let shiftX = 0;
         let shiftY = 0;
         let expectY = false;
-        for (let token of line.slice(1)) {
+        for (let token of line) {
             if (token.type === 'number') {
                 let num = parseInt(token.value);
                 if (expectY) {
@@ -574,6 +607,7 @@ function tokensToGrid(data: Token[]): [number[][], number] {
             } else if (token.type === '\n') {
                 continue;
             } else {
+                console.log(token);
                 error(`SyntaxError: Unexpected ${ERROR_TOKEN_TYPES[token.type]}`, token);
             }
         }
@@ -616,10 +650,12 @@ function gridToRLE([grid, width]: [number[][], number], rule: string): string {
     for (let row of grid) {
         if (row !== undefined) {
             for (let item of row) {
-                if (item) {
+                if (item === 0) {
+                    beforeRLE += 'b';
+                } else if (item === 1) {
                     beforeRLE += 'o';
                 } else {
-                    beforeRLE += 'b';
+                    beforeRLE += RLE_CHARS[item];
                 }
             }   
         }
@@ -668,5 +704,5 @@ if (outPath.endsWith('.cap')) {
 }
 
 let {tokens, rule} = await tokenize(rootPath, true);
-tokens = replaceVariables(tokens);
+tokens = removeParenthesesPairs(replaceVariables(tokens));
 await fs.writeFile(outPath, gridToRLE(tokensToGrid(tokens), rule));
