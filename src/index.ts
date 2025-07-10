@@ -81,7 +81,7 @@ async function tokenize<T extends boolean>(file: string, requireRule: T): Promis
     let lines = (await fs.readFile(file)).toString().replaceAll('\r', '').split('\n');
     rawFiles[file] = lines;
     let out: Token[] = [];
-    let rule: string | undefined = '';
+    let rule: string | undefined = undefined;
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
         if (line.includes('//')) {
@@ -141,6 +141,7 @@ async function tokenize<T extends boolean>(file: string, requireRule: T): Promis
             process.exit(1);
         }
     }
+    // @ts-ignore
     return {tokens: out, rule};
 }
 
