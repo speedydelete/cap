@@ -2,6 +2,7 @@
 ## CAP
 
 Cellular automata pattern language.
+If you don't know what cellular automata are, look up Conway's Game of Life.
 
 # Running
 
