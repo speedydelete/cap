@@ -1,2 +1,2 @@
 #!/bin/sh
-node --enable-source-maps "$(dirname "$0")/lib/index.js" $1
+node --enable-source-maps "$(dirname "$0")/lib/cli.js" $@
