@@ -177,11 +177,8 @@ async function tokenize<T extends boolean>(file: string, requireRule: T): Promis
         }
         out.push(token('\n', '\n', file, i, line.length + 1));
     }
-    if (requireRule) {
-        if (rule === undefined) {
-            console.log('SyntaxError: Patterns must have a rule');
-            process.exit(1);
-        }
+    if (requireRule && rule === undefined) {
+        rule = 'B3/S23';
     }
     // @ts-ignore
     return {tokens: out, rule};
