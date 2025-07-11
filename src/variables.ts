@@ -136,11 +136,14 @@ function runFunction(line: Token[], i: number, scope: Scope): [Token[], number] 
             funcScope.set(args[i], argInputs[i]);
         }
         section = replaceVariables(section, funcScope);
-    } else if (line[i + 1].type === '(') {
-        if (line[i + 2].type === ')') {
-            i += 2;
-        } else {
-            error('ArgumentError: Function takes 0 arguments but at least 1 was provided', line[i + 1]);
+    } else {
+        section = replaceVariables(section, new Scope(scope));
+        if (line[i + 1]?.type === '(') {
+            if (line[i + 2]?.type === ')') {
+                i += 2;
+            } else {
+                error('ArgumentError: Function takes 0 arguments but at least 1 was provided', line[i + 1]);
+            }
         }
     }
     return [section, i];
