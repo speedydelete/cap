@@ -203,6 +203,8 @@ export async function tokenize<T extends boolean>(file: string, requireRule: T):
                     wordStartCol = col;
                 } else if (char === '=' || char === '{' || char == '}' || char === '[' || char === ']' || char === '(' || char === ')' || char === ',' || char === '@') {
                     out.push(createToken(char, char, file, i, col));
+                } else if (char === ';') {
+                    out.push(createToken('\n', ';', file, i, col));
                 } else {
                     error(`SyntaxError: Unrecognized character: '${char}'`, char, file, i, col);
                 }

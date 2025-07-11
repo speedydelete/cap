@@ -34,7 +34,7 @@ export class Pattern {
     }
 
     set(x: number, y: number, value: number): this {
-        this.ensureSize(x + 1, y + 1);
+        this.ensureSize(y + 1, x + 1);
         this.data[y][x] = value;
         return this;
     }
@@ -69,7 +69,7 @@ export class Pattern {
     }
 
     setFrom(pattern: Pattern, offsetX: number = 0, offsetY: number = 0, overwrite: boolean = true): this {
-        this.ensureSize(offsetX + pattern.width, offsetY + pattern.height);
+        this.ensureSize(offsetY + pattern.height, offsetX + pattern.width);
         for (let y = 0; y < pattern.height; y++) {
             for (let x = 0; x < pattern.width; x++) {
                 if (overwrite || !this.data[y + offsetY][x + offsetX]) {
