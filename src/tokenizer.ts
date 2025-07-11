@@ -10,10 +10,10 @@ export function clearFileCache() {
 }
 
 
-export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'transform' | 'variable' | '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',';
+export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'transform' | 'variable' | '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@' | 'rule';
 
-export interface Token {
-    type: TokenType;
+export interface BaseToken<T extends TokenType = TokenType> {
+    type: T;
     value: string;
     stack: {
         file: string;
@@ -22,8 +22,35 @@ export interface Token {
     }[];
 }
 
-export function createToken(type: TokenType, value: string, file: string, line: number, col: number): Token {
-    return {type, value, stack: [{file, line, col}]};
+export interface TokenTypeMap {
+    '\n': BaseToken<'\n'>;
+    'rle': BaseToken<'rle'>;
+    'apgcode': BaseToken<'apgcode'>;
+    'number': BaseToken<'number'> & {numValue: number};
+    'transform': BaseToken<'transform'>;
+    'variable': BaseToken<'variable'>;
+    '=': BaseToken<'='>;
+    '{': BaseToken<'{'>;
+    '}': BaseToken<'}'>;
+    '[': BaseToken<'['>;
+    ']': BaseToken<']'>;
+    '(': BaseToken<'('>;
+    ')': BaseToken<')'>;
+    ',': BaseToken<','>;
+    '@': BaseToken<'@'>;
+    'rule': BaseToken<'rule'> & {rule: string};
+}
+
+export type Token<T extends TokenType = TokenType> = TokenTypeMap[T];
+
+export function createToken<T extends TokenType>(type: T, value: string, file: string, line: number, col: number): Token<T> {
+    let out: any = {type, value, stack: [{file, line, col}]};
+    if (type === 'number') {
+        out.numValue = parseInt(value);
+    } else if (type === 'rule') {
+        out.rule = value.slice('rule '.length);
+    }
+    return out;
 }
 
 
@@ -71,11 +98,13 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     '(': 'opening parentheses',
     ')': 'closing parentheses',
     ',': 'comma',
+    '@': 'at sign',
+    'rule': 'rule statement',
 };
 
-export function assertTokenType<T extends TokenType>(token: Token, type: T): void {
-    if (token.type !== type) {
-        error(`SyntaxError: Expected ${ERROR_TOKEN_TYPES[type]}, got ${ERROR_TOKEN_TYPES[token.type]}`, token);
+export function assertTokenType<T extends TokenType>(token: Token, type: T): asserts token is Token<T> {
+    if (token?.type !== type) {
+        error(`SyntaxError: Expected ${ERROR_TOKEN_TYPES[type]}, got ${token === undefined ? 'nothing' : ERROR_TOKEN_TYPES[token.type]}`, token);
     }
 }
 
@@ -115,7 +144,8 @@ export async function tokenize<T extends boolean>(file: string, requireRule: T):
         if (line.length === 0) {
             continue;
         } else if (line.startsWith('rule ')) {
-            rule = line.slice('rule '.length);
+            out.push(createToken('rule', line, file, i, 0));
+            out.push(createToken('\n', '\n', file, i, line.length + 1));
             continue;
         } else if (line.startsWith('include ') || line.startsWith('includestd ')) {
             let lib: string;
@@ -171,7 +201,7 @@ export async function tokenize<T extends boolean>(file: string, requireRule: T):
                     parsingWord = true;
                     word = char;
                     wordStartCol = col;
-                } else if (char === '=' || char === '{' || char == '}' || char === '[' || char === ']' || char === '(' || char === ')' || char === ',') {
+                } else if (char === '=' || char === '{' || char == '}' || char === '[' || char === ']' || char === '(' || char === ')' || char === ',' || char === '@') {
                     out.push(createToken(char, char, file, i, col));
                 } else {
                     error(`SyntaxError: Unrecognized character: '${char}'`, char, file, i, col);

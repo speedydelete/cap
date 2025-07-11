@@ -86,4 +86,7 @@ my_function = { (a, b)
 }
 my_function(block, blinker)
 
+// running patterns
+glider @1 2 2 R // glider at generation 1 at (2, 2), rotated right
+
 ```

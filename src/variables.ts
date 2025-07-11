@@ -154,6 +154,9 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
         } else if (line.length >= 2 && line[1].type === '=') {
             assertTokenType(line[0], 'variable');
             scope.set(line[0].value, line.slice(2));
+        } else if (line[0].type === 'rule') {
+            out.push(line[0]);
+            out.push({type: '\n', value: '\n', stack: structuredClone(line[0].stack)});
         } else {
             line = replaceVariablesSimple(line, scope, false);
             let sections: (Token | Token[])[] = [];
