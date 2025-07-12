@@ -10,7 +10,7 @@ export function clearFileCache() {
 }
 
 
-export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'transform' | 'variable' | '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@' | 'rule';
+export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'transform' | 'variable' | '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@' | 'rule' | 'keyword';// | '+' | '-' | '*' | '/' | '**' | '%' | '&' | '|' | '~' | '>>' | '<<' | '&&' | '||' | '!' | '==' | '!=' | '<' | '<=' | '>' | '>=';
 
 export interface BaseToken<T extends TokenType = TokenType> {
     type: T;
@@ -21,6 +21,8 @@ export interface BaseToken<T extends TokenType = TokenType> {
         col: number;
     }[];
 }
+
+export type Keyword = 'calc';
 
 export interface TokenTypeMap {
     '\n': BaseToken<'\n'>;
@@ -39,6 +41,7 @@ export interface TokenTypeMap {
     ',': BaseToken<','>;
     '@': BaseToken<'@'>;
     'rule': BaseToken<'rule'> & {rule: string};
+    'keyword': BaseToken<'keyword'> & {keyword: Keyword};
 }
 
 export type Token<T extends TokenType = TokenType> = TokenTypeMap[T];
@@ -49,6 +52,8 @@ export function createToken<T extends TokenType>(type: T, value: string, file: s
         out.numValue = parseInt(value);
     } else if (type === 'rule') {
         out.rule = value.slice('rule '.length);
+    } else if (type === 'keyword') {
+        out.keyword = value;
     }
     return out;
 }
@@ -100,6 +105,7 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     ',': 'comma',
     '@': 'at sign',
     'rule': 'rule statement',
+    'keyword': 'keyword',
 };
 
 export function assertTokenType<T extends TokenType>(token: Token, type: T): asserts token is Token<T> {
@@ -111,11 +117,15 @@ export function assertTokenType<T extends TokenType>(token: Token, type: T): ass
 
 const WORD_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$!';
 
+const KEYWORDS = ['calc'];
+
 function createWordToken(word: string, file: string, line: number, col: number): Token {
     let type: Token['type'];
     if (word.endsWith('!')) {
         type = 'rle';
-    } else if (word.match(/^(x[spq]|yl)\d+_/)) {
+    } else if (KEYWORDS.includes(word)) {
+        type = 'keyword';
+    } else if (word.match(/^(x[spq]\d+|apg)_/)) {
         type = 'apgcode';
     } else if (word.match(/^-?(\d+|0b[01]+|0o[0-7]+|0x[0-9A-Fa-f]+)$/)) {
         type = 'number';

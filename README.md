@@ -77,7 +77,7 @@ import block from data:text/plain;base64,eCA9IDIsIHkgPSAyLCBydWxlID0gQjMvUzIzCm9
 // apgcodes
 blinker = xp2_7
 blinker 4 0
-// anything matching /^(x[spq]|yl)\d+_/ is an apgcode
+// anything matching /^(x[spq]\d+|apg)_/ is an apgcode
 
 // functions
 my_function = { (a, b)
