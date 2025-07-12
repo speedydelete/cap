@@ -156,6 +156,7 @@ export async function tokenize<T extends boolean>(file: string, requireRule: T):
         } else if (line.startsWith('rule ')) {
             out.push(createToken('rule', line, file, i, 0));
             out.push(createToken('\n', '\n', file, i, line.length + 1));
+            rule = line.slice('rule '.length);
             continue;
         } else if (line.startsWith('include ') || line.startsWith('includestd ')) {
             let lib: string;

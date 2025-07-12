@@ -81,19 +81,19 @@ export class Pattern {
     }
 
     resizeToFit(): this {
-        while (this.data[0].every(x => x === 0)) {
+        while (this.height > 0 && this.data[0].every(x => x === 0)) {
             this.data.shift();
             this.height--;
         }
-        while (this.data[this.data.length - 1].every(x => x === 0)) {
+        while (this.height > 0 && this.data[this.data.length - 1].every(x => x === 0)) {
             this.data.pop();
             this.height--;
         }
-        while (this.data.every(row => row[0] === 0)) {
+        while (this.width > 0 && this.data.every(row => row[0] === 0)) {
             this.data.forEach(row => row.shift());
             this.width--;
         }
-        while (this.data.every(row => row[row.length - 1] === 0)) {
+        while (this.width > 0 && this.data.every(row => row[row.length - 1] === 0)) {
             this.data.forEach(row => row.pop());
             this.width--;
         }
@@ -108,8 +108,8 @@ export class Pattern {
             }
         }
         this.data = newData;
-        this.height += offsetX;
-        this.width += offsetY;
+        this.height += offsetY;
+        this.width += offsetX;
         return this;
     }
 
@@ -251,7 +251,7 @@ export class Pattern {
     static fromTokens(tokens: Token[]): Pattern {
         let lines = splitByNewlines(tokens);
         let patterns: [number, number, Pattern][] = [];
-        let rule: string = 'B3/S23';
+        let rule: Token<'rule'> = {type: 'rule', value: 'rule B3/S23', rule: 'B3/S23', stack: [{file: '<implicit>', line: 0, col: 0}]};
         for (let line of lines) {
             if (line.length === 0) {
                 continue;
@@ -285,7 +285,7 @@ export class Pattern {
                 pattern = Pattern.fromApgcode(line[0]);
                 line.shift();
             } else if (line[0].type === 'rule') {
-                rule = line[0].rule;
+                rule = line[0];
                 continue;
             } else {
                 error(`SyntaxError: Expected RLE, left bracket, apgcode, or rule statement, got ${ERROR_TOKEN_TYPES[line[0].type]}`, line[0]);
@@ -304,7 +304,7 @@ export class Pattern {
                 } else if (token.type === '@') {
                     let generations = line[++i];
                     assertTokenType(generations, 'number');
-                    pattern = runPattern(pattern, generations.numValue, rule, token);
+                    pattern = runPattern(pattern, generations.numValue, rule);
                 } else if (token.type === '\n') {
                     continue;
                 } else {
