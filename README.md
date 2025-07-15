@@ -96,4 +96,7 @@ import block, blinker from ./library.cap
 import switch_engine from https://example.com/switch_engine.rle
 import tub, ship from life.cap // no relative/absolute path means standard library, like in JS
 
+// expressions
+block (2 * 2) 3
+
 ```
