@@ -4,6 +4,7 @@ import {replaceVariables} from './variables.js';
 import {Pattern} from './pattern.js';
 
 export * as tokenizer from './tokenizer.js';
+export {clearFileCache} from './tokenizer.js';
 export * as variables from './variables.js';
 export * as rle from './pattern.js';
 
