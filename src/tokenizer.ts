@@ -1,6 +1,7 @@
 
-import * as path from 'node:path';
+import {join, dirname} from 'node:path';
 import * as fs from 'node:fs/promises';
+import {existsSync as exists} from 'node:fs';
 
 
 let rawFiles: {[key: string]: string[]} = {};
@@ -10,7 +11,9 @@ export function clearFileCache() {
 }
 
 
-export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'transform' | 'variable' | '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@' | 'rule' | 'keyword';// | '+' | '-' | '*' | '/' | '**' | '%' | '&' | '|' | '~' | '>>' | '<<' | '&&' | '||' | '!' | '==' | '!=' | '<' | '<=' | '>' | '>=';
+export type Operator = '+' | '++' | '-' | '--' | '*' | '/' | '**' | '%' | '&' | '|' | '~' | '>>' | '>>>' | '<<' | '&&' | '||' | '!' | '==' | '!=' | '<' | '<=' | '>' | '>=';
+export type Symbol = Operator | '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@';
+export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'transform' | 'variable' | 'rule' | 'keyword' | 'jsvalue' | Symbol;
 
 export interface BaseToken<T extends TokenType = TokenType> {
     type: T;
@@ -22,27 +25,19 @@ export interface BaseToken<T extends TokenType = TokenType> {
     }[];
 }
 
-export type Keyword = 'calc';
+export type Keyword = 'true' | 'false' | 'let' | 'const' | 'export' | 'expand' | 'function' | 'return';
 
-export interface TokenTypeMap {
+export type TokenTypeMap = {
     '\n': BaseToken<'\n'>;
     'rle': BaseToken<'rle'>;
     'apgcode': BaseToken<'apgcode'>;
     'number': BaseToken<'number'> & {numValue: number};
     'transform': BaseToken<'transform'>;
     'variable': BaseToken<'variable'>;
-    '=': BaseToken<'='>;
-    '{': BaseToken<'{'>;
-    '}': BaseToken<'}'>;
-    '[': BaseToken<'['>;
-    ']': BaseToken<']'>;
-    '(': BaseToken<'('>;
-    ')': BaseToken<')'>;
-    ',': BaseToken<','>;
-    '@': BaseToken<'@'>;
     'rule': BaseToken<'rule'> & {rule: string};
     'keyword': BaseToken<'keyword'> & {keyword: Keyword};
-}
+    'jsvalue': BaseToken<'jsvalue'> & {data: any};
+} & {[K in Symbol]: BaseToken<K>};
 
 export type Token<T extends TokenType = TokenType> = TokenTypeMap[T];
 
@@ -95,6 +90,7 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     'number': 'number',
     'transform': 'transformation',
     'variable': 'variable',
+    'jsvalue': 'JavaScript value',
     '=': 'equals sign',
     '{': 'opening brace',
     '}': 'closing brace',
@@ -106,6 +102,29 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     '@': 'at sign',
     'rule': 'rule statement',
     'keyword': 'keyword',
+    '+': 'plus sign',
+    '++': 'double plus sign',
+    '-': 'minus sign',
+    '--': 'double minus sign',
+    '*': 'asterisk',
+    '/': 'slash',
+    '**': 'double asterisk',
+    '%': 'percent sign',
+    '&': 'ampersand',
+    '|': 'vertical bar',
+    '~': 'tilde',
+    '>>': 'double greater than sign',
+    '>>>': 'triple greater than sign',
+    '<<': 'double less than sign',
+    '&&': 'double ampersand',
+    '||': 'double vertical bar',
+    '!': 'exclamation point',
+    '==': 'double equals sign',
+    '!=': 'not equals sign',
+    '<': 'less than sign',
+    '<=': 'less than or equal to sign',
+    '>': 'greater than sign',
+    '>=': 'greater than or equal to sign',
 };
 
 export function assertTokenType<T extends TokenType>(token: Token, type: T): asserts token is Token<T> {
@@ -115,9 +134,88 @@ export function assertTokenType<T extends TokenType>(token: Token, type: T): ass
 }
 
 
-const WORD_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$!';
+async function parseImport(line: string, file: string, lineNumber: number): Promise<Token[]> {
+    let items = line.split(' ');
+    let vars: string[] = [];
+    let i = 1;
+    for (; i < items.length; i++) {
+        if (items[i] === 'from') {
+            break;
+        } else {
+            vars.push(...items[i].split(','));
+        }
+    }
+    vars = vars.filter(x => x.trim() !== '');
+    if (items[i] !== 'from' || vars.length === 0) {
+        error('SyntaxError: Invalid import statement', line, file, lineNumber, 0);
+    }
+    let path = items.slice(i + 1).join(' ');
+    if (path.endsWith('.js')) {
+        if (path.startsWith('.')) {
+            path = join(file, path);
+        }
+        let obj = await import(path);
+        let out: Token[] = [];
+        for (let name of vars) {
+            out.push(createToken('keyword', 'let', file, lineNumber, 0));
+            out.push(createToken('variable', name, file, lineNumber, 0));
+            out.push(createToken('=', '=', file, lineNumber, 0));
+            out.push({
+                type: 'jsvalue',
+                value: '',
+                stack: [{file, line: lineNumber, col: 0}],
+                data: obj[name],
+            });
+            out.push(createToken('\n', '\n', file, lineNumber, 0));
+        }
+        return out;
+    } else {
+        let data: string[];
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+            let response = await fetch(path);
+            if (!response.ok) {
+                error(`ImportError: ${response.status} ${response.statusText} while fetching import`, 'x', file, lineNumber, 0);
+            }
+            data = (await response.text()).replaceAll('\r', '').split('\n');
+        } else {
+            if (path.startsWith('.')) {
+                path = join(dirname(file), path);
+            } else if (!path.startsWith('/')) {
+                path = join(import.meta.dirname, '../stdlib', path);
+            }
+            if (!exists(path)) {
+                error(`ImportError: '${path}' does not exist`, 'x', file, lineNumber, 0);
+            }
+            data = (await fs.readFile(path)).toString().replaceAll('\r', '').split('\n');
+        }
+        rawFiles[path] = data;
+        if (path.endsWith('.rle')) {
+            let index = data.findIndex(line => !line.startsWith('#') && !line.startsWith('x'));
+            let rle = data.slice(index).join('');
+            return [
+                createToken('variable', vars[0], file, lineNumber, 0),
+                createToken('=', '=', file, lineNumber, 0),
+                createToken('rle', rle, path, index, 0),
+                createToken('\n', '\n', file, lineNumber, line.length),
+            ];
+        } else {
+            let out: Token[] = [createToken('keyword', 'let', file, lineNumber, 0)];
+            for (let name of vars) {
+                out.push(createToken('variable', name, file, lineNumber, 0));
+            }
+            out.push(createToken('\n', '\n', file, lineNumber, 0));
+            out.push(createToken('{', '{', file, lineNumber, 0));
+            out.push(...(await tokenize({file: path, lines: data}, false)).tokens);
+            out.push(createToken('}', '}', file, lineNumber, 0));
+            out.push(createToken('\n', '\n', file, lineNumber, line.length));
+            return out;
+        }
+    }
+}
 
-const KEYWORDS = ['calc'];
+const WORD_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$.';
+
+const KEYWORDS: string[] = ['true', 'false', 'let', 'const', 'export', 'expand', 'function', 'return'] satisfies Keyword[];
 
 function createWordToken(word: string, file: string, line: number, col: number): Token {
     let type: Token['type'];
@@ -127,11 +225,11 @@ function createWordToken(word: string, file: string, line: number, col: number):
         type = 'keyword';
     } else if (word.match(/^(x[spq]\d+|apg)_/)) {
         type = 'apgcode';
-    } else if (word.match(/^-?(\d+|0b[01]+|0o[0-7]+|0x[0-9A-Fa-f]+)$/)) {
+    } else if (word.match(/^-?(\d+(.\d+)?|0b[01]+|0o[0-7]+|0x[0-9A-Fa-f]+)$/)) {
         type = 'number';
     } else if (word.match(/^[A-Z]*$/)) {
         type = 'transform';
-    } else if (word.match(/^[a-z_][a-z0-9_]*$/)) {
+    } else if (word.match(/^[a-z_][a-zA-Z0-9_]*$/)) {
         type = 'variable';
     } else {
         error(`SyntaxError: Invalid word: '${word}'`, word, file, line, col);
@@ -139,10 +237,15 @@ function createWordToken(word: string, file: string, line: number, col: number):
     return createToken(type, word, file, line, col);
 }
 
-
-export async function tokenize<T extends boolean>(file: string, requireRule: T): Promise<{tokens: Token[]} & (T extends true ? {rule: string} : {rule?: string})> {
-    let lines = (await fs.readFile(file)).toString().replaceAll('\r', '').split('\n');
-    rawFiles[file] = lines;
+export async function tokenize<T extends boolean>(file: string | {file: string, lines: string[]}, requireRule: T): Promise<{tokens: Token[]} & (T extends true ? {rule: string} : {rule?: string})> {
+    let lines: string[];
+    if (typeof file === 'object') {
+        lines = file.lines;
+        file = file.file;
+    } else {
+        lines = (await fs.readFile(file)).toString().replaceAll('\r', '').split('\n');
+        rawFiles[file] = lines;
+    }
     let out: Token[] = [];
     let rule: string | undefined = undefined;
     let match: RegExpExecArray | null;
@@ -158,69 +261,72 @@ export async function tokenize<T extends boolean>(file: string, requireRule: T):
             out.push(createToken('\n', '\n', file, i, line.length + 1));
             rule = line.slice('rule '.length);
             continue;
-        } else if (line.startsWith('include ') || line.startsWith('includestd ')) {
-            let lib: string;
-            if (line.startsWith('include ')) {
-                lib = path.join(path.dirname(file), line.slice('include '.length));
-            } else {
-                lib = path.join(import.meta.dirname, '../stdlib', line.slice('includestd '.length));
-            }
-            let tokenized = await tokenize(lib, false);
-            if (tokenized.rule !== undefined) {
-                rule = tokenized.rule;
-            }
-            out.push(...tokenized.tokens);
-            continue;
         } else if (line.startsWith('import ')) {
-            let items = line.split(' ');
-            if (items.length < 4 || items[2] !== 'from') {
-                error('SyntaxError: Invalid import statement', line, file, i, 0);
-            }
-            let url = items.slice(3).join(' ');
-            let response = await fetch(url);
-            if (!response.ok) {
-                error(`HTTPError: ${response.status} ${response.statusText} while fetching importurl`, url, file, i, items.slice(0, 2).join(' ').length + 1);
-            }
-            let data = (await response.text()).split('\n');
-            let index = data.findIndex(line => !line.startsWith('#') && !line.startsWith('x'));
-            let rle = data.slice(index).join('');
-            out.push(
-                createToken('variable', items[1], file, index, 'importurl '.length),
-                createToken('=', '=', file, i, 0),
-                createToken('rle', rle, url, index, 0),
-                createToken('\n', '\n', file, i, line.length),
-            );
+            out.push(...(await parseImport(line, file, i)));
             continue;
         }
         let word = '';
         let parsingWord = false;
-        let col = 0;
         let wordStartCol = 0;
-        for (let char of line) {
+        for (let col = 0; col < line.length; col++) {
+            let char = line[col];
             if (parsingWord && WORD_CHARS.includes(char)) {
                 word += char;
             } else {
                 if (parsingWord) {
+                    if (char === '!') {
+                        word += char;
+                    }
                     out.push(createWordToken(word, file, i, wordStartCol));
                     word = '';
                     parsingWord = false;
+                    if (char === '!') {
+                        continue;
+                    }
                 }
                 if (char === ' ' || char === '\t') {
-                    col++;
                     continue;
                 } else if (WORD_CHARS.includes(char)) {
                     parsingWord = true;
                     word = char;
                     wordStartCol = col;
-                } else if (char === '=' || char === '{' || char == '}' || char === '[' || char === ']' || char === '(' || char === ')' || char === ',' || char === '@') {
-                    out.push(createToken(char, char, file, i, col));
                 } else if (char === ';') {
                     out.push(createToken('\n', ';', file, i, col));
+                } else if (char === '=' || char === '+' || char === '-' || char === '*' || char === '&' || char === '|') {
+                    if (line[col + 1] === char) {
+                        col++;
+                        out.push(createToken(char + char as '==' | '++' | '--' | '**' | '&&' | '||', char + char, file, i, col));
+                    } else {
+                        out.push(createToken(char, char, file, i, col));
+                    }
+                } else if (char === '{' || char == '}' || char === '[' || char === ']' || char === '(' || char === ')' || char === ',' || char === '@' || char === '/' || char === '%' || char === '~' || char === '!') {
+                    out.push(createToken(char, char, file, i, col));
+                } else if (char === '<' || char === '>') {
+                    if (line[col + 1] === '=') {
+                        col++;
+                        out.push(createToken(char + '=' as '<=' | '>=', char + '=', file, i, col));
+                    } else if (line[col + 1] === char) {
+                        if (char === '>' && line[col + 2] === char) {
+                            col += 2;
+                            out.push(createToken('>>>', '>>>', file, i, col));
+                        } else {
+                            col++;
+                            out.push(createToken(char + char as '<<' | '>>', char + char, file, i, col));
+                        }
+                    } else {
+                        out.push(createToken(char, char, file, i, col));
+                    }
+                } else if (char === '!') {
+                    if (line[col + 1] === '=') {
+                        col++;
+                        out.push(createToken('!=', '!=', file, i, col));
+                    } else {
+                        out.push(createToken('!', '!', file, i, col));
+                    }
                 } else {
                     error(`SyntaxError: Unrecognized character: '${char}'`, char, file, i, col);
                 }
             }
-            col++;
         }
         if (parsingWord) {
             out.push(createWordToken(word, file, i, wordStartCol));
