@@ -1,12 +1,11 @@
 
-import {inspect} from 'node:util';
 import {Operator, Token, error, assertTokenType, splitByNewlines, ERROR_TOKEN_TYPES, createToken} from './tokenizer.js';
 
 
 export class Scope {
 
     parent: Scope | null;
-    vars: Map<string, {value: Token[], const: boolean}>;
+    vars: Map<string, {value: Token[], isConst: boolean}>;
 
     constructor(parent: Scope | null = null) {
         this.parent = parent;
@@ -28,30 +27,30 @@ export class Scope {
         }
     }
 
-    set(name: Token, value: Token[], const_: boolean = false): void {
-        if (this.vars.get(name.value)?.const) {
-            error(`ScopeError: Cannot set const variable '${name.value}`, name);
+    set(name: Token, value: Token[], isConst: boolean = false): void {
+        if (this.vars.get(name.value)?.isConst) {
+            error(`ConstError: Cannot set const variable '${name.value}`, name);
         }
-        this.vars.set(name.value, {value, const: const_});
+        this.vars.set(name.value, {value, isConst});
     }
 
-    _change(name: Token, value: Token[], const_: boolean): boolean {
+    _change(name: Token, value: Token[], isConst: boolean): boolean {
         let thisVar = this.vars.get(name.value);
         if (thisVar) {
-            if (thisVar.const) {
-                error(`ScopeError: Cannot set const variable '${name.value}'`, name);
+            if (thisVar.isConst) {
+                error(`ConstError: Cannot set const variable '${name.value}'`, name);
             }
-            this.vars.set(name.value, {value, const: const_});
+            this.vars.set(name.value, {value, isConst});
             return true;
         } else if (this.parent) {
-            return this.parent._change(name, value, const_);
+            return this.parent._change(name, value, isConst);
         } else {
             return false;
         }
     }
 
-    change(name: Token, value: Token[], const_: boolean = false): void {
-        if (!this._change(name, value, const_)) {
+    change(name: Token, value: Token[], isConst: boolean = false): void {
+        if (!this._change(name, value, isConst)) {
             error(`ScopeError: Variable '${name.value}' is not declared`, name);
         }
     }
@@ -129,11 +128,10 @@ function infixToPostfix(tokens: Token[]): Token<'number' | Operator>[] {
     while (stack.length > 0) {
         out.push(stack.pop() as Token<Operator>);
     }
-    console.log(out);
     return out;
 }
 
-function runExpression(tokens: Token[]): Token[] {
+function runExpression(tokens: Token[]): Token<'number'> {
     let stack: Token<'number'>[] = [];
     for (let token of infixToPostfix(tokens)) {
         if (token.type === 'number') {
@@ -162,8 +160,8 @@ function runExpression(tokens: Token[]): Token[] {
                     error(`SyntaxError: Binary operators require 2 arguments`, token);
                 }
             } else {
-                let left = (stack.pop() as Token<'number'>).numValue;
                 let right = (stack.pop() as Token<'number'>).numValue;
+                let left = (stack.pop() as Token<'number'>).numValue;
                 if (op === '+') {
                     out = left + right;
                 } else if (op === '-') {
@@ -214,7 +212,14 @@ function runExpression(tokens: Token[]): Token[] {
             });
         }
     }
-    return stack;
+    if (stack.length !== 1) {
+        error(`InternalError: runExpression output is ${stack.length} tokens`, tokens[0]);
+    }
+    let token = stack[0];
+    if (token.type !== 'number') {
+        error(`InternalError: runExpression output is not a number`, tokens[0]);   
+    }
+    return token;
 }
 
 function runExpressions(tokens: Token[]): Token[] {
@@ -233,7 +238,7 @@ function runExpressions(tokens: Token[]): Token[] {
             wasBrace = false;
             parenCount--;
             if (parenCount === 0) {
-                out.push(...runExpression(currentExpr));
+                out.push(runExpression(currentExpr));
                 currentExpr = [];
                 continue;
             }
@@ -357,7 +362,7 @@ function runFunction(line: Token[], i: number, scope: Scope): [Token[], number] 
         }
         let funcScope = new Scope(scope);
         for (let i = 0; i < args.length; i++) {
-            funcScope.vars.set(args[i], {value: argInputs[i], const: false});
+            funcScope.vars.set(args[i], {value: argInputs[i], isConst: false});
         }
         section = replaceVariables(section, funcScope);
     } else {
@@ -385,6 +390,7 @@ function checkExpandKeyword(tokens: Token[], scope: Scope): Token[] {
 
 export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): Token[] {
     let out: Token[] = [];
+    let ifWasTrue = false;
     for (let line of splitByNewlines(tokens)) {
         if (line.length === 0) {
             continue;
@@ -416,7 +422,10 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                 }
                 assertTokenType(line[2], 'variable');
                 assertTokenType(line[3], '=');
-                scope.change(line[2], checkExpandKeyword(line.slice(4), scope), line[1].keyword === 'const');
+                let value = checkExpandKeyword(line.slice(4), scope);
+                if (!scope._change(line[2], value, line[1].keyword === 'const')) {
+                    scope.set(line[2], value, line[1].keyword === 'const');
+                }
             } else if (line[0].keyword === 'function') {
                 assertTokenType(line[1], 'variable');
                 assertTokenType(line[2], '(');
@@ -428,10 +437,67 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                 scope.set(line[1], [line[index + 1], ...line.slice(2, index + 1), ...line.slice(index + 2)]);
             } else if (line[0].keyword === 'return') {
                 return out;
+            } else if (line[0].keyword === 'if' || line[0].keyword === 'while' || line[0].keyword === 'for') {
+                assertTokenType(line[1], '(');
+                let parenCount = 1;
+                let i = 2;
+                let expr: Token[] = [];
+                while (i < line.length) {
+                    let token = line[i++];
+                    if (token.type === '(') {
+                        parenCount++;
+                    } else if (token.type === ')') {
+                        parenCount--;
+                        if (parenCount === 0) {
+                            break;
+                        }
+                    }
+                    expr.push(token);
+                }
+                let body = line.slice(i);
+                if (line[0].keyword === 'if') {
+                    if (runExpression(replaceVariables(expr, scope)).numValue !== 0) {
+                        out.push(...replaceVariables(body, scope));
+                        ifWasTrue = true;
+                    } else {
+                        ifWasTrue = false;
+                    }
+                } else if (line[0].keyword === 'while') {
+                    while (runExpression(replaceVariables(expr, scope)).numValue !== 0) {
+                        out.push(...replaceVariables(body, scope));
+                    }
+                } else {
+                    let lines = splitByNewlines(expr);
+                    if (lines.length !== 3) {
+                        error(`Expected 3 lines inside for statement`, line[0]);
+                    }
+                    let forScope = new Scope(scope);
+                    out.push(...replaceVariables(lines[0], forScope));
+                    while (runExpression(replaceVariables(lines[1], forScope)).numValue !== 0) {
+                        out.push(...replaceVariables(body, forScope));
+                        out.push(...replaceVariables(lines[2], forScope));
+                    }
+                }
+            } else if (line[0].keyword === 'else') {
+                if (!ifWasTrue) {
+                    out.push(...replaceVariables(line.slice(1), scope));
+                }
             }
         } else if (line[0].type === 'rule') {
             out.push(line[0]);
             out.push({type: '\n', value: '\n', stack: structuredClone(line[0].stack)});
+        } else if (line.length === 2 && line[0].type === 'variable' && (line[1].type === '++' || line[1].type === '--')) {
+            let tokens = scope.get(line[0]);
+            if (tokens.length !== 1 || tokens[0].type !== 'number') {
+                error(`Invalid value for shorthand ${line[1].type}`, tokens[0]);
+            }
+            let value = structuredClone(tokens[0]);
+            if (line[1].type === '++') {
+                value.numValue++;
+            } else {
+                value.numValue--;
+            }
+            scope.change(line[0], [value]);
         } else {
             line = replaceVariablesSimple(line, scope, false);
             let sections: (Token | Token[])[] = [];
