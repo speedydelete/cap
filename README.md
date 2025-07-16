@@ -99,4 +99,24 @@ import tub, ship from life.cap // no relative/absolute path means standard libra
 // expressions
 block (2 * 2) 3
 
+// conditionals
+
+if (x > 0) {
+    block 0 0
+} else {
+    block 4 0
+}
+
+// loops
+
+for (let i = 0; i < 5; i++) {
+    block (i * 4) i
+}
+
+let i = 0
+while (i < 5) {
+    block (i * 4) i
+    i++
+}
+
 ```
