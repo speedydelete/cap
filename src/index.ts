@@ -10,7 +10,7 @@ export * as rle from './pattern.js';
 
 
 export async function compile(filePath: string): Promise<string> {
-    let {tokens, rule} = await tokenize(filePath, true);
+    let {tokens, rule} = await tokenize(filePath);
     tokens = replaceVariables(tokens);
     return Pattern.fromTokens(tokens).toRLE(rule);
 }
