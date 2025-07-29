@@ -149,7 +149,7 @@ function parseSingleNumINTTransitions(num: number, minus: boolean, trs: string, 
         let outTrs = Object.keys(TRANSITIONS[num]).join('');
         for (let char of trs) {
             if (!outTrs.includes(char)) {
-                error(`Invalid isotropic transition for ${num}: ${char}`, token);
+                error(`RuleError: Invalid isotropic transition for ${num}: ${char}`, token);
             }
             outTrs = outTrs.replace(char, '');
         }
@@ -159,7 +159,7 @@ function parseSingleNumINTTransitions(num: number, minus: boolean, trs: string, 
     } else {
         for (let char of trs) {
             if (!(char in TRANSITIONS[num])) {
-                error(`Invalid isotropic transition for ${num}: ${char}`, token);
+                error(`RuleError: Invalid isotropic transition for ${num}: ${char}`, token);
             }
             out.push([num, char]);
         }
@@ -197,7 +197,7 @@ function parseHROTTransitions(part: string, rule: string, token: Token): number[
     if (part.includes('-') || part.includes('..')) {
         let sections = part.split(/-|../);
         if (sections.length !== 2) {
-            error(`Invalid HROT rule (more than 1 - or .. in a section): '${rule}'`, token);
+            error(`RuleError: Invalid HROT rule (more than 1 - or .. in a section): '${rule}'`, token);
         }
         let [start, end] = part.split('-');
         for (let i = parseInt(start); i <= parseInt(end); i++) {
@@ -236,7 +236,7 @@ function parseRule(token: Token<'rule'>): Rule {
                 r: 1,
             }
         } else {
-            error(`Invalid basic rule: ${rule}`, token);
+            error(`RuleError: Invalid basic rule: ${rule}`, token);
         }
     } else if ('012345678/'.includes(rule[0])) {
         if (match = rule.match(/^(\d*)\/(\d*)(?:\/(\d+))?$/)) {
@@ -258,7 +258,7 @@ function parseRule(token: Token<'rule'>): Rule {
                 r: 1,
             };
         } else {
-            error(`Invalid Generations rule: ${rule}`, token);
+            error(`RuleError: Invalid Generations rule: ${rule}`, token);
         }
     } else if (rule.startsWith('R')) {
         let parts = rule.split(',');
@@ -282,7 +282,7 @@ function parseRule(token: Token<'rule'>): Rule {
                 part = part.slice(1);
                 if (part.length !== 0) {
                     if (!'0123456789'.includes(part[0])) {
-                        error(`Invalid HROT rule (character after S or B must be a digit or a comma): '${rule}'`, token);
+                        error(`RuleError: Invalid HROT rule (character after S or B must be a digit or a comma): '${rule}'`, token);
                     }
                     list.push(...parseHROTTransitions(part, rule, token));
                 }
@@ -300,12 +300,12 @@ function parseRule(token: Token<'rule'>): Rule {
                     b = list;
                 }
             } else {
-                error(`Invalid HROT rule (cannot parse section): '${rule}'`, token);
+                error(`RuleError: Invalid HROT rule (cannot parse section): '${rule}'`, token);
             }
         }
         if (m !== 0) {
             if (m !== 1) {
-                error(`Invalid HROT rule (M is not 0 or 1): '${rule}'`, token);
+                error(`RuleError: Invalid HROT rule (M is not 0 or 1): '${rule}'`, token);
             }
             s = s.map(x => x + 1);
             b = b.map(x => x + 1);
@@ -322,7 +322,7 @@ function parseRule(token: Token<'rule'>): Rule {
                 r: 1,
             };
         } else {
-        error(`Invalid apgsearch outer-totalistic rule: ${rule}`, token);
+        error(`RuleError: Invalid apgsearch outer-totalistic rule: ${rule}`, token);
         }
     } else if (rule.startsWith('g')) {
         if (match = rule.match(/^g(\d+)b(\d+)s(\d+)$/)) {
@@ -335,10 +335,10 @@ function parseRule(token: Token<'rule'>): Rule {
                 r: 1,
             }
         } else {
-        error(`Invalid apgsearch Generations rule: ${rule}`, token);
+        error(`RuleError: Invalid apgsearch Generations rule: ${rule}`, token);
         }
     } else {
-        error(`Cannot parse rule: ${rule}`, token);
+        error(`RuleError: Cannot parse rule: ${rule}`, token);
     }
 }
 
