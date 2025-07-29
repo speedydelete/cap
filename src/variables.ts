@@ -12,19 +12,23 @@ export class Scope {
         this.vars = new Map();
     }
 
-    get(token: Token, force: boolean = true): Token[] {
-        let value = this.vars.get(token.value)?.value;
+    _get(token: Token, force: boolean = true): {value: Token[], isConst: boolean} {
+        let value = this.vars.get(token.value);
         if (value !== undefined) {
             let out = structuredClone(value);
-            out.forEach(x => x.stack.push(...token.stack));
+            out.value.forEach(x => x.stack.push(...token.stack));
             return out;
         } else if (this.parent) {
-            return this.parent.get(token);
+            return this.parent._get(token);
         } else if (!force) {
-            return [token];
+            return {value: [token], isConst: false};
         } else {
             error(`ReferenceError: ${token.value} is not defined`, token);
         }
+    }
+
+    get(token: Token, force: boolean = true): Token[] {
+        return this._get(token, force).value;
     }
 
     set(name: Token, value: Token[], isConst: boolean = false): void {
@@ -53,6 +57,10 @@ export class Scope {
         if (!this._change(name, value, isConst)) {
             error(`ScopeError: Variable '${name.value}' is not declared`, name);
         }
+    }
+
+    isConst(name: Token): boolean {
+        return this._get(name, false).isConst;
     }
 
 }
@@ -317,7 +325,7 @@ function runFunction(line: Token[], i: number, scope: Scope): [Token[], number] 
         for (; j < section.length; j++) {
             let token = section[j];
             if (token.type === ')') {
-                break;
+                break
             } else if (wasComma) {
                 assertTokenType(token, 'variable');
                 args.push(token.value);
@@ -346,7 +354,7 @@ function runFunction(line: Token[], i: number, scope: Scope): [Token[], number] 
                     }
                 } else if (token.type === '(' || token.type === '[' || token.type === '{') {
                     parenCount++;
-                } else if (token.type === ',') {
+                } else if (token.type === ',' && parenCount < 2) {
                     argInputs.push(currentArgInput);
                     currentArgInput = [];
                     continue;
@@ -416,15 +424,40 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                     error(`SyntaxError: Const declarations must have an initializer`, line[0]);
                 }
             } else if (line[0].keyword === 'export') {
-                assertTokenType(line[1], 'keyword');
-                if (line[1].keyword !== 'let' && line[1].keyword !== 'const') {
-                    error(`SyntaxError: Expected let or const`, line[1]);
-                }
-                assertTokenType(line[2], 'variable');
-                assertTokenType(line[3], '=');
-                let value = checkExpandKeyword(line.slice(4), scope);
-                if (!scope._change(line[2], value, line[1].keyword === 'const')) {
-                    scope.set(line[2], value, line[1].keyword === 'const');
+                if (line[1]?.type === 'variable') {
+                    for (let token of line.slice(1)) {
+                        if (token.type === 'variable') {
+                            scope.parent?._change(token, scope.get(token), scope.isConst(token));
+                        } else if (token.type === ',') {
+                            continue;
+                        } else {
+                            error(`SyntaxError: Expected variable or comma, got ${ERROR_TOKEN_TYPES[token.type]}`, token);
+                        }
+                    }
+                } else if (line[1]?.type === 'keyword') {
+                    assertTokenType(line[1], 'keyword');
+                    let value: Token[];
+                    if (line[1].keyword === 'let' || line[1].keyword === 'const') {
+                        assertTokenType(line[2], 'variable');
+                        assertTokenType(line[3], '=');
+                        value = checkExpandKeyword(line.slice(4), scope);
+                    } else if (line[1].keyword === 'function') {
+                        assertTokenType(line[2], 'variable');
+                        assertTokenType(line[3], '(');
+                        let index = line.findIndex(token => token.type === ')');
+                        if (index === -1) {
+                            error(`SyntaxError: Function declarations must contain a closing parentheses`, line[0]);
+                        }
+                        assertTokenType(line[index + 1], '{');
+                        value = [line[index + 1], ...line.slice(3, index + 1), ...line.slice(index + 2)];
+                    } else {
+                        error(`SyntaxError: Expected 'let', 'const', or 'function'`, line[1]);
+                    }
+                    if (!scope._change(line[2], value, line[1].keyword !== 'let')) {
+                        scope.set(line[2], value, line[1].keyword !== 'let');
+                    }
+                } else {
+                    error(`SyntaxError: Expected keyword or variable, got ${line[1] ? ERROR_TOKEN_TYPES[line[1].type] : 'nothing'}`, line[1] ? line[1] : line[0]);
                 }
             } else if (line[0].keyword === 'function') {
                 assertTokenType(line[1], 'variable');
@@ -469,7 +502,7 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                 } else {
                     let lines = splitByNewlines(expr);
                     if (lines.length !== 3) {
-                        error(`Expected 3 lines inside for statement`, line[0]);
+                        error(`SyntaxError: Expected 3 lines inside for statement`, line[0]);
                     }
                     let forScope = new Scope(scope);
                     out.push(...replaceVariables(lines[0], forScope));
@@ -489,7 +522,7 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
         } else if (line.length === 2 && line[0].type === 'variable' && (line[1].type === '++' || line[1].type === '--')) {
             let tokens = scope.get(line[0]);
             if (tokens.length !== 1 || tokens[0].type !== 'number') {
-                error(`Invalid value for shorthand ${line[1].type}`, tokens[0]);
+                error(`SyntaxError: Invalid value for shorthand ${line[1].type}`, tokens[0]);
             }
             let value = structuredClone(tokens[0]);
             if (line[1].type === '++') {
