@@ -1,21 +1,38 @@
 
-import {Operator, Token, error, assertTokenType, splitByNewlines, ERROR_TOKEN_TYPES, createToken} from './tokenizer.js';
+import {Operator, Token, error, assertTokenType, splitByNewlines, ERROR_TOKEN_TYPES, isKeyword} from './tokenizer.js';
 
+
+export interface ScopeEntry {
+    value: Token[];
+    isConst: boolean;
+}
 
 export class Scope {
 
     parent: Scope | null;
-    vars: Map<string, {value: Token[], isConst: boolean}>;
+    vars: Map<string, ScopeEntry>;
 
     constructor(parent: Scope | null = null) {
         this.parent = parent;
         this.vars = new Map();
     }
 
-    _get(token: Token, force: boolean = true): {value: Token[], isConst: boolean} {
+    _get(token: Token, force: boolean = true): ScopeEntry {
         let value = this.vars.get(token.value);
         if (value !== undefined) {
-            let out = structuredClone(value);
+            let out: ScopeEntry;
+            if (value.value.some(x => x.type === 'jsvalue')) {
+                out = {value: [], isConst: value.isConst};
+                for (let token of value.value) {
+                    if (token.type === 'jsvalue') {
+                        out.value.push({type: 'jsvalue', value: token.value, stack: structuredClone(token.stack), data: token.data});
+                    } else {
+                        out.value.push(structuredClone(token));
+                    }
+                }
+            } else {
+                out = structuredClone(value);
+            }
             out.value.forEach(x => x.stack.push(...token.stack));
             return out;
         } else if (this.parent) {
@@ -98,16 +115,16 @@ function infixToPostfix(tokens: Token[]): Token<'number' | Operator>[] {
     for (let token of tokens) {
         if (token.type === 'number') {
             out.push(token);
-        } else if (token.type === 'keyword') {
-            if (token.keyword === 'true' || token.keyword === 'false') {
+        } else if (isKeyword(token)) {
+            if (token.type === 'keyword_true' || token.type === 'keyword_false') {
                 out.push({
                     type: 'number',
-                    value: token.keyword,
-                    numValue: token.keyword === 'true' ? 1 : 0,
+                    value: token.value,
+                    numValue: token.type === 'keyword_true' ? 1 : 0,
                     stack: token.stack
                 });
             } else {
-                error(`SyntaxError: Unrecognized keyword in expression evaluation: '${token.keyword}'`, token);
+                error(`SyntaxError: Unrecognized keyword in expression evaluation: '${token.value}'`, token);
             }
         } else if (token.type === '\n') {
             continue;
@@ -314,9 +331,15 @@ function runFunction(line: Token[], i: number, scope: Scope): [Token[], number] 
             braceCount++;
         } else if (token.type === '}') {
             braceCount--;
+            if (braceCount === 0) {
+                break;
+            }
         }
     }
     section.pop();
+    while (section[0].type === '\n') {
+        section.shift();
+    }
     if (section[0].type === '(') {
         section.shift();
         let args: string[] = [];
@@ -387,7 +410,7 @@ function runFunction(line: Token[], i: number, scope: Scope): [Token[], number] 
 }
 
 function checkExpandKeyword(tokens: Token[], scope: Scope): Token[] {
-    if (tokens[0]?.type === 'keyword' && tokens[0].keyword === 'expand') {
+    if (tokens[0]?.type === 'keyword_expand') {
         tokens = replaceVariables(tokens.slice(1), scope);
         while (tokens[tokens.length - 1]?.type === '\n') {
             tokens.pop();
@@ -405,12 +428,12 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
         } else if (line[1]?.type === '=') {
             assertTokenType(line[0], 'variable');
             scope.change(line[0], checkExpandKeyword(line.slice(2), scope));
-        } else if (line[0].type === 'keyword') {
-            if (line[0].keyword === 'let' || line[0].keyword === 'const') {
+        } else if (isKeyword(line[0])) {
+            if (line[0].type === 'keyword_let' || line[0].type === 'keyword_const') {
                 if (line[2]?.type === '=') {
                     assertTokenType(line[1], 'variable');
-                    scope.set(line[1], checkExpandKeyword(line.slice(3), scope), line[0].keyword === 'const');
-                } else if (line[0].keyword === 'let') {
+                    scope.set(line[1], checkExpandKeyword(line.slice(3), scope), line[0].type === 'keyword_const');
+                } else if (line[0].type === 'keyword_let') {
                     for (let token of line.slice(1)) {
                         if (token.type === 'variable') {
                             scope.set(token, []);
@@ -423,7 +446,7 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                 } else {
                     error(`SyntaxError: Const declarations must have an initializer`, line[0]);
                 }
-            } else if (line[0].keyword === 'export') {
+            } else if (line[0].type === 'keyword_export') {
                 if (line[1]?.type === 'variable') {
                     for (let token of line.slice(1)) {
                         if (token.type === 'variable') {
@@ -434,14 +457,13 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                             error(`SyntaxError: Expected variable or comma, got ${ERROR_TOKEN_TYPES[token.type]}`, token);
                         }
                     }
-                } else if (line[1]?.type === 'keyword') {
-                    assertTokenType(line[1], 'keyword');
+                } else if (isKeyword(line[1])) {
                     let value: Token[];
-                    if (line[1].keyword === 'let' || line[1].keyword === 'const') {
+                    if (line[1].type === 'keyword_let' || line[1].type === 'keyword_const') {
                         assertTokenType(line[2], 'variable');
                         assertTokenType(line[3], '=');
                         value = checkExpandKeyword(line.slice(4), scope);
-                    } else if (line[1].keyword === 'function') {
+                    } else if (line[1].type === 'keyword_function') {
                         assertTokenType(line[2], 'variable');
                         assertTokenType(line[3], '(');
                         let index = line.findIndex(token => token.type === ')');
@@ -453,13 +475,13 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                     } else {
                         error(`SyntaxError: Expected 'let', 'const', or 'function'`, line[1]);
                     }
-                    if (!scope._change(line[2], value, line[1].keyword !== 'let')) {
-                        scope.set(line[2], value, line[1].keyword !== 'let');
+                    if (!scope._change(line[2], value, line[1].type !== 'keyword_let')) {
+                        scope.set(line[2], value, line[1].type !== 'keyword_let');
                     }
                 } else {
                     error(`SyntaxError: Expected keyword or variable, got ${line[1] ? ERROR_TOKEN_TYPES[line[1].type] : 'nothing'}`, line[1] ? line[1] : line[0]);
                 }
-            } else if (line[0].keyword === 'function') {
+            } else if (line[0].type === 'keyword_function') {
                 assertTokenType(line[1], 'variable');
                 assertTokenType(line[2], '(');
                 let index = line.findIndex(token => token.type === ')');
@@ -468,9 +490,9 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                 }
                 assertTokenType(line[index + 1], '{');
                 scope.set(line[1], [line[index + 1], ...line.slice(2, index + 1), ...line.slice(index + 2)]);
-            } else if (line[0].keyword === 'return') {
+            } else if (line[0].type === 'keyword_return') {
                 return out;
-            } else if (line[0].keyword === 'if' || line[0].keyword === 'while' || line[0].keyword === 'for') {
+            } else if (line[0].type === 'keyword_if' || line[0].type === 'keyword_while' || line[0].type === 'keyword_for') {
                 assertTokenType(line[1], '(');
                 let parenCount = 1;
                 let i = 2;
@@ -488,14 +510,14 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                     expr.push(token);
                 }
                 let body = line.slice(i);
-                if (line[0].keyword === 'if') {
+                if (line[0].type === 'keyword_if') {
                     if (runExpression(replaceVariables(expr, scope)).numValue !== 0) {
                         out.push(...replaceVariables(body, scope));
                         ifWasTrue = true;
                     } else {
                         ifWasTrue = false;
                     }
-                } else if (line[0].keyword === 'while') {
+                } else if (line[0].type === 'keyword_while') {
                     while (runExpression(replaceVariables(expr, scope)).numValue !== 0) {
                         out.push(...replaceVariables(body, scope));
                     }
@@ -511,12 +533,12 @@ export function replaceVariables(tokens: Token[], scope: Scope = new Scope()): T
                         out.push(...replaceVariables(lines[2], forScope));
                     }
                 }
-            } else if (line[0].keyword === 'else') {
+            } else if (line[0].type === 'keyword_else') {
                 if (!ifWasTrue) {
                     out.push(...replaceVariables(line.slice(1), scope));
                 }
             }
-        } else if (line[0].type === 'rule') {
+        } else if (line[0].type === 'directive') {
             out.push(line[0]);
             out.push({type: '\n', value: '\n', stack: structuredClone(line[0].stack)});
         } else if (line.length === 2 && line[0].type === 'variable' && (line[1].type === '++' || line[1].type === '--')) {
