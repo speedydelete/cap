@@ -1,8 +1,5 @@
 
-import {join, dirname} from 'node:path';
-import * as fs from 'node:fs/promises';
-import {existsSync as exists} from 'node:fs';
-import {createRequire} from 'node:module';
+import {join, dirname, readFile, exists, env, exit, dir, createRequire, console} from './apis.js';
 
 
 let rawFiles: {[key: string]: string[]} = {};
@@ -13,8 +10,10 @@ export function clearFileCache() {
 
 
 export type Operator = '+' | '++' | '-' | '--' | '*' | '/' | '**' | '%' | '&' | '|' | '~' | '>>' | '>>>' | '<<' | '&&' | '||' | '!' | '==' | '!=' | '<' | '<=' | '>' | '>=';
-export type Symbol = Operator | '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@';
-export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'variable' | 'rule' | 'keyword' | 'jsvalue' | 'string' | Symbol;
+export type Symbol = '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@';
+export type Transform = 'F' | 'Fx' | 'R' | 'Rx' | 'B' | 'Bx' | 'L' | 'Lx';
+export type Keyword = 'true' | 'false' | 'let' | 'const' | 'export' | 'expand' | 'function' | 'return' | 'if' | 'else' | 'for' | 'while' | 'import' | 'from' | Transform;
+export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'variable' | `keyword_${Keyword}` | Symbol | Operator | 'string' | 'directive' | 'jsvalue';
 
 export interface BaseToken<T extends TokenType = TokenType> {
     type: T;
@@ -27,8 +26,6 @@ export interface BaseToken<T extends TokenType = TokenType> {
     }[];
 }
 
-export type Transform = 'F' | 'Fx' | 'R' | 'Rx' | 'B' | 'Bx' | 'L' | 'Lx';
-export type Keyword = 'true' | 'false' | 'let' | 'const' | 'export' | 'expand' | 'function' | 'return' | 'if' | 'else' | 'for' | 'while' | 'import' | 'from' | Transform | `ROT_${'NW' | 'NE' | 'SE' | 'SW'}_${Transform}`;
 
 export type TokenTypeMap = {
     '\n': BaseToken<'\n'>;
@@ -36,28 +33,28 @@ export type TokenTypeMap = {
     'apgcode': BaseToken<'apgcode'>;
     'number': BaseToken<'number'> & {numValue: number};
     'variable': BaseToken<'variable'>;
-    'rule': BaseToken<'rule'> & {rule: string};
-    'keyword': BaseToken<'keyword'> & {keyword: Keyword};
-    'jsvalue': BaseToken<'jsvalue'> & {data: any};
     'string': BaseToken<'string'> & {data: string};
-} & {[K in Symbol]: BaseToken<K>};
+    'directive': BaseToken<'directive'>;
+    'jsvalue': BaseToken<'jsvalue'> & {data: any};
+}
+ & {[K in Keyword as `keyword_${K}`]: BaseToken<`keyword_${K}`> & {value: K}}
+ & {[K in Symbol as `${K}`]: BaseToken<`${K}`> & {value: Symbol}}
+ & {[K in Operator as `${K}`]: BaseToken<`${K}`> & {value: Operator}};
 
 export type Token<T extends TokenType = TokenType> = TokenTypeMap[T];
 
 export function createToken<T extends TokenType>(type: T, value: string, file: string, line: number, col: number): Token<T> {
-    let out: any = {type, value, stack: [{file, line, col, length: value.length}]} satisfies Omit<Token, 'numValue' | 'rule' | 'keyword'>;
+    let out: any = {type, value, stack: [{file, line, col, length: value.length}]};
     if (type === 'number') {
         out.numValue = parseInt(value);
-    } else if (type === 'rule') {
-        out.rule = value.slice('rule '.length);
-    } else if (type === 'keyword') {
-        out.keyword = value;
+    } else if (type === 'string') {
+        out.data = value.slice(1, -1).replaceAll('\\n', '\\').replaceAll(/(?<!\\)\\(?!\\)/g, '').replaceAll('\\\\', '');
     }
     return out;
 }
 
 
-let homeDir = process.env.HOME;
+let homeDir = env.HOME;
 
 export type ErrorMessage = `${string}Error: ${string}`;
 
@@ -84,11 +81,11 @@ export function error(msg: ErrorMessage, value: string | Token, file?: string, l
             msg += '\n        ' + ' '.repeat(col) + '^'.repeat(length) + ' (here)';
         }
     }
-    if (process.env.FORCE_COLORS !== undefined && process.env.FORCE_COLORS !== '') {
+    if (env.FORCE_COLORS) {
         msg = '\x1b[91m' + msg + '\x1b[0m';
     }
     console.log(msg);
-    process.exit(1);
+    exit(1);
 }
 
 export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
@@ -97,8 +94,28 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     'apgcode': 'apgcode',
     'number': 'number',
     'variable': 'variable',
-    'jsvalue': 'JavaScript value',
-    'string': 'string',
+    'keyword_true': `keyword 'true'`,
+    'keyword_false': `keyword 'false'`,
+    'keyword_let': `keyword 'let'`,
+    'keyword_const': `keyword 'const'`,
+    'keyword_export': `keyword 'export'`,
+    'keyword_expand': `keyword 'expand'`,
+    'keyword_function': `keyword 'function'`,
+    'keyword_return': `keyword 'return'`,
+    'keyword_if': `keyword 'if'`,
+    'keyword_else': `keyword 'else'`,
+    'keyword_for': `keyword 'for'`,
+    'keyword_while': `keyword 'while'`,
+    'keyword_import': `keyword 'import'`,
+    'keyword_from': `keyword 'from'`,
+    'keyword_F': `keyword 'F'`,
+    'keyword_Fx': `keyword 'Fx'`,
+    'keyword_R': `keyword 'R'`,
+    'keyword_Rx': `keyword 'Rx'`,
+    'keyword_B': `keyword 'B'`,
+    'keyword_Bx': `keyword 'Bx'`,
+    'keyword_L': `keyword 'L'`,
+    'keyword_Lx': `keyword 'Lx'`,
     '=': 'equals sign',
     '{': 'opening brace',
     '}': 'closing brace',
@@ -108,8 +125,6 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     ')': 'closing parentheses',
     ',': 'comma',
     '@': 'at sign',
-    'rule': 'rule statement',
-    'keyword': 'keyword',
     '+': 'plus sign',
     '++': 'double plus sign',
     '-': 'minus sign',
@@ -133,12 +148,26 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     '<=': 'less than or equal to sign',
     '>': 'greater than sign',
     '>=': 'greater than or equal to sign',
+    'string': 'string',
+    'directive': 'directive',
+    'jsvalue': 'JavaScript value',
 };
 
-export function assertTokenType<T extends TokenType>(token: Token, type: T): asserts token is Token<T> {
-    if (token?.type !== type) {
-        error(`SyntaxError: Expected ${ERROR_TOKEN_TYPES[type]}, got ${token === undefined ? 'nothing' : ERROR_TOKEN_TYPES[token.type]}`, token);
+export function assertTokenType<T extends TokenType[]>(token: Token, ...types: T): asserts token is Token<T[number]> {
+    if (!types.includes(token?.type)) {
+        let typeStrings = types.map(x => ERROR_TOKEN_TYPES[x]);
+        let expected = typeStrings.slice(0, -1).join(', ');
+        if (expected.length > 0) {
+            expected += ' or ';
+        }
+        expected += typeStrings[typeStrings.length - 1];
+        let got = token === undefined ? 'nothing' : ERROR_TOKEN_TYPES[token.type];
+        error(`SyntaxError: Expected ${expected}, got ${got}`, token);
     }
+}
+
+export function isKeyword(token: Token): token is Token<`keyword_${Keyword}`> {
+    return token?.type.startsWith('keyword_');
 }
 
 const WORD_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$.';
@@ -149,8 +178,8 @@ function createWordToken(word: string, file: string, line: number, col: number):
     let type: Token['type'];
     if (word.endsWith('!')) {
         type = 'rle';
-    } else if (KEYWORDS.includes(word) || word.match(/^ROT_[NS][WE]_[FRBL]x?$/)) {
-        type = 'keyword';
+    } else if (KEYWORDS.includes(word)) {
+        type = `keyword_${word as Keyword}`;
     } else if (word.match(/^(x[spq]\d+|apg)_/)) {
         type = 'apgcode';
     } else if (word.match(/^-?(\d+(.\d+)?|0b[01]+|0o[0-7]+|0x[0-9A-Fa-f]+)$/)) {
@@ -160,20 +189,20 @@ function createWordToken(word: string, file: string, line: number, col: number):
     } else {
         error(`SyntaxError: Invalid word: '${word}'`, word, file, line, col);
     }
-    return createToken(type, word, file, line, col);
+    let out = createToken(type, word, file, line, col);
+    return out;
 }
 
-async function _tokenize<T extends boolean>(file: string | {file: string, lines: string[]}, requireRule: T): Promise<{tokens: Token[]} & (T extends true ? {rule: string} : {rule?: string})> {
+async function _tokenize(file: string | {file: string, lines: string[]}): Promise<Token[]> {
     let lines: string[];
     if (typeof file === 'object') {
         lines = file.lines;
         file = file.file;
     } else {
-        lines = (await fs.readFile(file)).toString().replaceAll('\r', '').split('\n');
+        lines = (await readFile(file)).replaceAll('\r', '').split('\n');
         rawFiles[file] = lines;
     }
     let out: Token[] = [];
-    let rule: string | undefined = undefined;
     let match: RegExpExecArray | null;
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
@@ -182,10 +211,9 @@ async function _tokenize<T extends boolean>(file: string | {file: string, lines:
         }
         if (line.length === 0) {
             continue;
-        } else if (line.startsWith('rule ')) {
-            out.push(createToken('rule', line, file, i, 0));
-            out.push(createToken('\n', '\n', file, i, line.length + 1));
-            rule = line.slice('rule '.length);
+        } else if (line.startsWith('#')) {
+            out.push(createToken('directive', line, file, i, 0));
+            out.push(createToken('\n', '\n', file, i, line.length));
             continue;
         }
         let word = '';
@@ -218,14 +246,14 @@ async function _tokenize<T extends boolean>(file: string | {file: string, lines:
                 } else if (char === '=' || char === '+' || char === '-' || char === '*' || char === '&' || char === '|') {
                     if (line[col + 1] === char) {
                         col++;
-                        out.push(createToken(char + char as '==' | '++' | '--' | '**' | '&&' | '||', char + char, file, i, col));
+                        out.push(createToken('' + char + char as TokenType, char + char, file, i, col));
                     } else if (char === '-' && '0123456789'.includes(line[col + 1])) {
                         parsingWord = true;
                         word = char + line[col + 1];
                         wordStartCol = col;
                         col++;
                     } else {
-                        out.push(createToken(char, char, file, i, col));
+                        out.push(createToken('' + char as TokenType, char, file, i, col));
                     }
                 } else if (char === '{' || char == '}' || char === '[' || char === ']' || char === '(' || char === ')' || char === ',' || char === '@' || char === '/' || char === '%' || char === '~' || char === '!') {
                     out.push(createToken(char, char, file, i, col));
@@ -282,11 +310,7 @@ async function _tokenize<T extends boolean>(file: string | {file: string, lines:
         }
         out.push(createToken('\n', '\n', file, i, line.length + 1));
     }
-    if (requireRule && rule === undefined) {
-        rule = 'B3/S23';
-    }
-    // @ts-ignore
-    return {tokens: out, rule};
+    return out;
 }
 
 
@@ -315,7 +339,7 @@ export function splitByNewlines(tokens: Token[]): Token[][] {
             if (!other || CLOSING_PARENS[other.type] !== token.type) {
                 error(`SyntaxError: Unmatched ${ERROR_TOKEN_TYPES[token.type]}`, token);
             }
-        } else if (token.type === 'keyword' && token.keyword === 'else' && parenStack.length === 0) {
+        } else if (token.type === 'keyword_else' && parenStack.length === 0) {
             out.push(line);
             line = [];
         }
@@ -335,7 +359,7 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
     for (let line of splitByNewlines(tokens)) {
         if (line.length === 0) {
             continue;
-        } else if (line[0].type === 'keyword' && (line[0].keyword === 'import' || (line[0].keyword === 'export' && line.some(x => x.type === 'keyword' && x.keyword === 'from')))) {
+        } else if (line[0].type === 'keyword_import' || (line[0].type === 'keyword_export' && line.some(x => x.type === 'keyword_from'))) {
             let imports: Token[] = [];
             let i = 0;
             while (i < line.length) {
@@ -351,26 +375,21 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
             for (let token of imports) {
                 if (token.type === '*') {
                     if (imports.length !== 1) {
-                        error(`SyntaxError: When '${line[0].keyword} *' is used, nothing else can be ${line[0].keyword}ed`, line[0]);
+                        error(`SyntaxError: When '${line[0].value} *' is used, nothing else can be ${line[0].value}ed`, line[0]);
                     }
                 }
             }
             let specifier: Token;
             let fromToken = line[i];
-            if (!fromToken) {
-                error(`SyntaxError: Expected string or keyword 'from', got end of line`, line[0]);
-            } else if (fromToken.type === 'keyword') {
-                if (fromToken.keyword !== 'from') {
-                    error(`SyntaxError: Expected string or keyword 'from', got keyword '${fromToken.keyword}'`, fromToken);
-                }
-                specifier = line[i + 1];
-            } else if (fromToken.type === 'string') {
-                specifier = fromToken;
-                if (imports.length !== 0 || line[0].keyword === 'export') {
-                    error(`SyntaxError: Expected keyword 'from', got string`, fromToken);
-                }
+            if (imports.length !== 0 || line[0].type === 'keyword_export') {
+                assertTokenType(fromToken, 'keyword_from');
             } else {
-                error(`SyntaxError: Expected string or keyword 'from', got ${fromToken.type}`, line[0]);
+                assertTokenType(fromToken, 'keyword_from', 'string');
+            }
+            if (fromToken.type === 'keyword_from') {
+                specifier = line[i + 1];
+            } else {
+                specifier = fromToken;
             }
             let file = tokens[0].stack[0].file;
             let lineNumber = line[0].stack[0].line;
@@ -379,32 +398,31 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
             if (path.startsWith('.')) {
                 path = join(dirname(file), path);
             } else if (!path.startsWith('/') && !path.startsWith('http://') && !path.startsWith('https://')) {
-                path = join(import.meta.dirname, '../stdlib', path);
+                path = join(dir, '../stdlib', path);
             }
             if (path.endsWith('.js')) {
                 if (!allowJSImports) {
                     error(`ImportError: JS imports are not allowed`, specifier);
                 }
-                let obj = createRequire(file)(path);
-                let out: Token[] = [];
+                let obj = await createRequire(file)(path);
                 for (let name of imports) {
                     if (name.type === '*') {
-                        error(`SyntaxError: Cannot use '${line[0].keyword} *' with JS imports`, name);
+                        error(`SyntaxError: Cannot use '${line[0].type.slice('keyword_'.length)} *' with JS imports`, name);
                     }
+                    let value = obj[name.value];
                     out.push(
-                        createToken('keyword', 'let', file, lineNumber, 0),
+                        createToken('keyword_let', 'let', file, lineNumber, 0),
                         createToken('variable', name.value, file, lineNumber, 0),
                         createToken('=', '=', file, lineNumber, 0),
                         {
                             type: 'jsvalue',
-                            value: '',
+                            value: typeof value === 'object' && value !== 'null' || typeof value === 'function' ? Object.prototype.toString.call(obj[name.value]) : '[primitive ' + String(value) + ']',
                             stack: [{file, line: lineNumber, col: 0, length: 1}],
                             data: obj[name.value],
                         },
                         createToken('\n', '\n', file, lineNumber, 0),
                     );
                 }
-                return out;
             } else {
                 let data: string[];
                 if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -423,14 +441,14 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
                             error(`ImportError: '${path}' does not exist`, specifier);
                         }
                     }
-                    data = (await fs.readFile(path)).toString().replaceAll('\r', '').split('\n');
+                    data = (await readFile(path)).replaceAll('\r', '').split('\n');
                 }
                 rawFiles[path] = data;
                 if (path.endsWith('.rle')) {
                     let index = data.findIndex(line => !line.startsWith('#') && !line.startsWith('x'));
                     let rle = data.slice(index).join('');
                     if (imports[0].type === '*') {
-                        error(`SyntaxError: Cannot use '${line[0].keyword} *' with a RLE import`, imports[0]);
+                        error(`SyntaxError: Cannot use '${line[0].value} *' with a RLE import`, imports[0]);
                     }
                     out.push(
                         imports[0],
@@ -439,15 +457,15 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
                         createToken('\n', '\n', file, lineNumber, line.length),
                     );
                 } else {
-                    let {tokens} = await _tokenize({file: path, lines: data}, false);
+                    let tokens = await _tokenize({file: path, lines: data});
                     tokens = await doImports(tokens, allowJSImports);
                     if (imports.length > 0) {
-                        out.push(createToken('keyword', 'let', file, lineNumber, 0));
+                        out.push(createToken('keyword_let', 'let', file, lineNumber, 0));
                         if (imports[0].type === '*') {
                             imports = [];
                             for (let line of splitByNewlines(tokens)) {
-                                if (line[0]?.type === 'keyword' && line[0].keyword === 'export') {
-                                    if (line[1]?.value === 'function' || line[3]?.type === '=') {
+                                if (line[0]?.type === 'keyword_export') {
+                                    if (line[1]?.type === 'keyword_function' || line[3]?.type === '=') {
                                         imports.push(line[2]);
                                     } else {
                                         imports.push(...line.slice(2).filter(x => x.type === 'variable'));
@@ -468,9 +486,9 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
                     );
                 }
             }
-            if (line[0].keyword === 'export') {
+            if (line[0].type === 'keyword_export') {
                 out.push(
-                    createToken('keyword', 'export', file, lineNumber, 0),
+                    createToken('keyword_export', 'export', file, lineNumber, 0),
                     ...imports,
                     createToken('\n', '\n', file, lineNumber, 0),
                 );
@@ -480,13 +498,12 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
             out.push(...line, createToken('\n', '\n', entry.file, entry.line, rawFiles[entry.file][entry.line].length));
         }
     }
-    // console.log('\n\n===== ' + tokens[0].stack[0].file + ' =====\n\n' + out.map(x => x.value).join(' '));
     return out;
 }
 
 
-export async function tokenize(path: string, allowJSImports: boolean = false): Promise<{tokens: Token[], rule: string}> {
-    let {tokens, rule} = await _tokenize(path, true);
+export async function tokenize(path: string, allowJSImports: boolean = false): Promise<Token[]> {
+    let tokens = await _tokenize(path);
     tokens = await doImports(tokens, allowJSImports);
-    return {tokens, rule};
+    return tokens;
 }
