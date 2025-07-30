@@ -209,8 +209,8 @@ function parseHROTTransitions(part: string, rule: string, token: Token): number[
     return out;
 }
 
-function parseRule(token: Token<'rule'>): Rule {
-    let rule = token.rule;
+function parseRule(token: Token<'directive'>): Rule {
+    let rule = token.value.slice('#rule '.length);
     let cached = ruleCache.get(rule);
     if (cached !== undefined) {
         return cached;
@@ -441,7 +441,7 @@ function runGeneration(p: Pattern, rule: Rule): Pattern {
     return p;
 }
 
-export function runPattern(p: Pattern, generations: number, ruleToken: Token<'rule'>): Pattern {
+export function runPattern(p: Pattern, generations: number, ruleToken: Token<'directive'>): Pattern {
     if (p.height === 0 || p.width === 0) {
         return p;
     }
