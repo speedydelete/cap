@@ -1,5 +1,5 @@
 
-import {Token, Transform, error, ERROR_TOKEN_TYPES, assertTokenType, splitByNewlines} from './tokenizer.js';
+import {Token, Transform, createToken, error, ERROR_TOKEN_TYPES, assertTokenType, splitByNewlines, isKeyword} from './tokenizer.js';
 import {runPattern} from './runner.js';
 
 
@@ -16,6 +16,7 @@ export class Pattern {
     data: number[][];
     height: number;
     width: number;
+    ruleToken: Token<'directive'> | undefined = undefined;
 
     _absX: number = 0;
     _absY: number = 0;
@@ -149,7 +150,7 @@ export class Pattern {
         return this;
     }
 
-    applyTransform(transform: Transform): this {
+    applyTransform(transform: Transform, token?: Token): this {
         if (transform === 'F') {
             return this;
         } else if (transform === 'Fx') {
@@ -164,35 +165,10 @@ export class Pattern {
             this.reverseColumns();
         } else if (transform === 'L') {
             this.transpose().reverseRows();
-        } else {
+        } else if (transform === 'Lx') {
             this.transpose().reverseRows().reverseColumns();
-        }
-        return this;
-    }
-
-    applyTransformToken(token: Token<'keyword'>): this {
-        let value = token.value;
-        if (value === 'F' || value === 'Fx' || value === 'R' || value === 'Rx' || value === 'B' || value === 'Bx' || value === 'L' || value === 'Lx') {
-            this.applyTransform(value);
-        } else if (value.startsWith('ROT_')) {
-            let [_, corner, rotation] = token.value.split('_') as ['ROT_', 'NW' | 'NE' | 'SE' | 'SW', Transform];
-            if (corner === 'NW' || corner === 'NE') {
-                this._absY -= this.height;
-                // this.offsetBy(0, this.height);
-            } else {
-                this._absY += this.height;
-                // this.resize(this.height * 2, this.width);
-            }
-            if (corner === 'NW' || corner === 'SW') {
-                this._absX -= this.width;
-                // this.offsetBy(this.width, 0);
-            } else {
-                this._absX += this.width;
-                // this.resize(this.height, this.width * 2);
-            }
-            this.applyTransform(rotation);
         } else {
-            error(`SyntaxError: Expected F, L, R, B, Fx, Lx, Rx, or Bx, got '${token.keyword}'`, token);
+            throw new Error(`Invalid transform: ${transform}`);
         }
         return this;
     }
@@ -282,9 +258,12 @@ export class Pattern {
     }
 
     static fromTokens(tokens: Token[]): Pattern {
+        if (tokens.length === 0) {
+            return new Pattern();
+        }
         let lines = splitByNewlines(tokens);
         let patterns: Pattern[] = [];
-        let rule: Token<'rule'> = {type: 'rule', value: 'rule B3/S23', rule: 'B3/S23', stack: [{file: '<implicit>', line: 0, col: 0, length: 1}]};
+        let rule: Token<'directive'> = createToken('directive', '#rule B3/S23', tokens[0].stack[0].file, 0, 0);
         for (let line of lines) {
             if (line.length === 0) {
                 continue;
@@ -317,8 +296,10 @@ export class Pattern {
             } else if (line[0].type === 'apgcode') {
                 pattern = Pattern.fromApgcode(line[0]);
                 line.shift();
-            } else if (line[0].type === 'rule') {
-                rule = line[0];
+            } else if (line[0].type === 'directive') {
+                if (line[0].value.startsWith('#rule ')) {
+                    rule = line[0];
+                }
                 continue;
             } else if (line[0].type === '!') {
                 pattern = new Pattern();
@@ -326,6 +307,7 @@ export class Pattern {
             } else {
                 error(`SyntaxError: Expected RLE, left bracket, apgcode, or rule statement, got ${ERROR_TOKEN_TYPES[line[0].type]}`, line[0]);
             }
+            pattern.ruleToken = rule;
             for (let i = 0; i < line.length; i++) {
                 let token = line[i];
                 if (token.type === 'number') {
@@ -333,8 +315,8 @@ export class Pattern {
                     assertTokenType(yCoord, 'number');
                     pattern._absX += token.numValue;
                     pattern._absY += yCoord.numValue;
-                } else if (token.type === 'keyword') {
-                    pattern.applyTransformToken(token);
+                } else if (isKeyword(token) && (token.value === 'F' || token.value === 'Fx' || token.value === 'R' || token.value === 'Rx' || token.value === 'B' || token.value === 'Bx' || token.value === 'L' || token.value === 'Lx')) {
+                    pattern.applyTransform(token.value);
                 } else if (token.type === '@') {
                     let generations = line[++i];
                     assertTokenType(generations, 'number');
@@ -348,6 +330,7 @@ export class Pattern {
             patterns.push(pattern);
         }
         let out = new Pattern();
+        out.ruleToken = rule;
         let offsetX = -Math.min(...patterns.map(x => x._absX));
         let offsetY = -Math.min(...patterns.map(x => x._absY));
         for (let pattern of patterns) {
@@ -356,7 +339,13 @@ export class Pattern {
         return out;
     }
 
-    toRLE(rule: string): string {
+    toRLE(rule?: string): string {
+        if (!rule) {
+            if (!this.ruleToken) {
+                throw new Error(`No rule or rule token provided`);
+            }
+            rule = this.ruleToken.value.slice('#rule '.length);
+        }
         let beforeRLE = '';
         for (let row of this.data) {
             if (row !== undefined) {
