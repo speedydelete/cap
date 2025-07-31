@@ -1,6 +1,7 @@
 
 import {Token, error, assertTokenType, splitByNewlines, ERROR_TOKEN_TYPES, isKeyword} from './tokenizer.js';
 import {runExpressions, runExpression} from './expressions.js';
+import {replacePipes, replaceConduits} from './conduits.js';
 
 
 export interface ScopeEntry {
@@ -234,10 +235,7 @@ function replaceJS(tokens: Token[]): Token[] {
         if (token.type === 'jsvalue') {
             let value = token.data;
             if (typeof value === 'function') {
-                let leftParenToken = tokens[++i];
-                if (leftParenToken.type !== '(') {
-                    error(`SyntaxError: Expected left parentheses`, token);
-                }
+                assertTokenType(tokens[++i], '(');
                 let parenCount = 1;
                 let args: Token[][] = [];
                 let currentArg: Token[] = [];
@@ -252,12 +250,13 @@ function replaceJS(tokens: Token[]): Token[] {
                         }
                     } else if (token.type === ',' && parenCount === 0) {
                         args.push(currentArg);
+                        currentArg = [];
                         continue;
                     }
                     currentArg.push(token);
                 }
                 if (parenCount !== 0) {
-                    error(`SyntaxError: Expected left parentheses`, tokens[tokens.length - 1]);
+                    error(`SyntaxError: Expected opening parentheses`, tokens[tokens.length - 1]);
                 }
                 if (currentArg.length > 0) {
                     args.push(currentArg);
@@ -418,7 +417,6 @@ export function expand(tokens: Token[], scope: Scope = new Scope()): Token[] {
             scope.change(line[0], [value]);
         } else {
             line = replaceVariables(line, scope, false);
-            line = replaceJS(line);
             let sections: (Token | Token[])[] = [];
             for (let i = 0; i < line.length; i++) {
                 let token = line[i];
@@ -431,7 +429,7 @@ export function expand(tokens: Token[], scope: Scope = new Scope()): Token[] {
                 }
             }
             for (let line of combinations(sections)) {
-                out.push(...replaceVariables(line, scope));
+                out.push(...replaceConduits(replacePipes(replaceJS(replaceVariables(line, scope)))));
                 out.push({type: '\n', value: '\n', stack: structuredClone(line[0].stack)});
             }
         }
