@@ -414,16 +414,16 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
                     }
                     let value = obj[name.value];
                     out.push(
-                        createToken('keyword_let', 'let', file, lineNumber, 0),
-                        createToken('variable', name.value, file, lineNumber, 0),
-                        createToken('=', '=', file, lineNumber, 0),
+                        createToken('keyword_let', 'let'),
+                        name,
+                        createToken('=', '='),
                         {
                             type: 'jsvalue',
                             value: typeof value === 'object' && value !== 'null' || typeof value === 'function' ? Object.prototype.toString.call(obj[name.value]) : '[primitive ' + String(value) + ']',
                             stack: [{file, line: lineNumber, col: 0, length: 1}],
                             data: obj[name.value],
                         },
-                        createToken('\n', '\n', file, lineNumber, 0),
+                        createToken('\n', '\n'),
                     );
                 }
             } else {
@@ -455,15 +455,15 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
                     }
                     out.push(
                         imports[0],
-                        createToken('=', '=', file, lineNumber, 0),
+                        createToken('=', '='),
                         createToken('rle', rle, path, index, 0),
-                        createToken('\n', '\n', file, lineNumber, line.length),
+                        createToken('\n', '\n'),
                     );
                 } else {
                     let tokens = await _tokenize({file: path, lines: data});
                     tokens = await doImports(tokens, allowJSImports);
                     if (imports.length > 0) {
-                        out.push(createToken('keyword_let', 'let', file, lineNumber, 0));
+                        out.push(createToken('keyword_let', 'let'));
                         if (imports[0].type === '*') {
                             imports = [];
                             for (let line of splitByNewlines(tokens)) {
@@ -478,22 +478,22 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
                         }
                         out.push(
                             ...imports,
-                            createToken('\n', '\n', file, lineNumber, 0),
+                            createToken('\n', '\n'),
                         );
                     }
                     out.push(
-                        createToken('{', '{', file, lineNumber, 0),
+                        createToken('{', '{'),
                         ...tokens,
-                        createToken('}', '}', file, lineNumber, 0),
-                        createToken('\n', '\n', file, lineNumber, line.length),
+                        createToken('}', '}'),
+                        createToken('\n', '\n'),
                     );
                 }
             }
             if (line[0].type === 'keyword_export') {
                 out.push(
-                    createToken('keyword_export', 'export', file, lineNumber, 0),
+                    createToken('keyword_export', 'export'),
                     ...imports,
-                    createToken('\n', '\n', file, lineNumber, 0),
+                    createToken('\n', '\n'),
                 );
             }
         } else {
