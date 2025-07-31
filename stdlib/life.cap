@@ -110,6 +110,11 @@ export const b_heptomino = 2o$b2o$2o$o!
 export const r_pentomino = b2o$2o$bo!
 export const pi_heptomino = 3o$2bo$3o!
 
+export const h = o$obo$3o$2bo!
+export const r = b2o$2o$bo!
+export const b = 2o$b2o$2o$o!
+export const pi = 3o$2bo$3o!
+
 export const t_tetromino = 3o$bo!
 export const tail = o$o$2o!
 
