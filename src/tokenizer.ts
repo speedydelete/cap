@@ -12,7 +12,7 @@ export function clearFileCache() {
 export type Operator = '+' | '++' | '-' | '--' | '*' | '/' | '**' | '%' | '&' | '|' | '~' | '>>' | '>>>' | '<<' | '&&' | '||' | '!' | '==' | '!=' | '<' | '<=' | '>' | '>=';
 export type Symbol = '=' | '{' | '}' | '[' | ']' | '(' | ')' | ',' | '@';
 export type Transform = 'F' | 'Fx' | 'R' | 'Rx' | 'B' | 'Bx' | 'L' | 'Lx';
-export type Keyword = 'true' | 'false' | 'let' | 'const' | 'export' | 'expand' | 'function' | 'return' | 'if' | 'else' | 'for' | 'while' | 'import' | 'from' | Transform;
+export type Keyword = 'true' | 'false' | 'let' | 'const' | 'export' | 'expand' | 'function' | 'return' | 'if' | 'else' | 'for' | 'while' | 'import' | 'from' | Transform | 'conduit';
 export type TokenType = '\n' | 'rle' | 'apgcode' | 'number' | 'variable' | `keyword_${Keyword}` | Symbol | Operator | 'string' | 'directive' | 'jsvalue';
 
 export interface BaseToken<T extends TokenType = TokenType> {
@@ -116,6 +116,7 @@ export const ERROR_TOKEN_TYPES: {[K in TokenType]: string} = {
     'keyword_Bx': `keyword 'Bx'`,
     'keyword_L': `keyword 'L'`,
     'keyword_Lx': `keyword 'Lx'`,
+    'keyword_conduit': `keyword 'conduit'`,
     '=': 'equals sign',
     '{': 'opening brace',
     '}': 'closing brace',
