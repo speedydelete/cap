@@ -6,8 +6,8 @@ import {console, disableLoggingToConsole} from './apis.js';
 
 export * as tokenizer from './tokenizer.js';
 export {clearFileCache} from './tokenizer.js';
-export * as variables from './expand.js';
-export * as rle from './pattern.js';
+export * as expand from './expand.js';
+export * as pattern from './pattern.js';
 export {getStdout, getStderr, clearStdout, clearStderr} from './apis.js';
 
 
