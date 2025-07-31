@@ -263,7 +263,7 @@ export class Pattern {
         }
         let lines = splitByNewlines(tokens);
         let patterns: Pattern[] = [];
-        let rule: Token<'directive'> = createToken('directive', '#rule B3/S23', tokens[0].stack[0].file, 0, 0);
+        let rule: Token<'directive'> = createToken('directive', '#rule B3/S23');
         for (let line of lines) {
             if (line.length === 0) {
                 continue;
