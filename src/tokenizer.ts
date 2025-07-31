@@ -175,7 +175,7 @@ export function isKeyword(token: Token): token is Token<`keyword_${Keyword}`> {
 
 const WORD_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$.';
 
-const KEYWORDS: string[] = ['true', 'false', 'let', 'const', 'export', 'expand', 'function', 'return', 'if', 'else', 'for', 'while', 'import', 'from', 'F', 'Fx', 'R', 'Rx', 'B', 'Bx', 'L', 'Lx'] satisfies Keyword[];
+const KEYWORDS: string[] = ['true', 'false', 'let', 'const', 'export', 'expand', 'function', 'return', 'if', 'else', 'for', 'while', 'import', 'from', 'F', 'Fx', 'R', 'Rx', 'B', 'Bx', 'L', 'Lx', 'conduit'] satisfies Keyword[];
 
 function createWordToken(word: string, file: string, line: number, col: number): Token {
     let type: Token['type'];
