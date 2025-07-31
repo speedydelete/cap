@@ -1,5 +1,5 @@
 
-import {join, dirname, readFile, exists, env, exit, dir, createRequire, console} from './apis.js';
+import {join, dirname, readFile, exists, env, exit, dir, requireFrom, console} from './apis.js';
 
 
 let rawFiles: {[key: string]: string[]} = {};
@@ -400,11 +400,11 @@ async function doImports(tokens: Token[], allowJSImports: boolean): Promise<Toke
             } else if (!path.startsWith('/') && !path.startsWith('http://') && !path.startsWith('https://')) {
                 path = join(dir, '../stdlib', path);
             }
-            if (path.endsWith('.js')) {
+            if (path.endsWith('.js') || path.endsWith('.mjs') || path.endsWith('.cjs')) {
                 if (!allowJSImports) {
                     error(`ImportError: JS imports are not allowed`, specifier);
                 }
-                let obj = await createRequire(file)(path);
+                let obj = await requireFrom(file, path);
                 for (let name of imports) {
                     if (name.type === '*') {
                         error(`SyntaxError: Cannot use '${line[0].type.slice('keyword_'.length)} *' with JS imports`, name);
