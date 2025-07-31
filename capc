@@ -1,2 +1,15 @@
 #!/bin/sh
-node --enable-source-maps "$(dirname "$0")/lib/cli.js" $@
+
+dir="$(dirname $0)"
+
+if ! [ -d "$dir/node_modules" ]; then
+    echo "Installing dependancies"
+    (cd "$dir"; npm install)
+fi
+
+if ! [ -d "$dir/lib" ]; then
+    echo "Compiling"
+    (cd "$dir"; npx tsc)
+fi
+
+node --enable-source-maps "$dir/lib/cli.js" $@
