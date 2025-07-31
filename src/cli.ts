@@ -13,12 +13,12 @@ const ARGS: {[K in keyof CompilerOptions]: boolean extends CompilerOptions[K] ? 
     debugTokens: {
         type: 'boolean',
         arg: 'dt',
-        desc: 'show debug information',
+        desc: 'show tokens after tokenization (debug)',
     },
-    debugReplaced: {
+    debugExpanded: {
         type: 'boolean',
-        arg: 'dr',
-        desc: 'show debug information',
+        arg: 'de',
+        desc: 'show tokens after expansion (debug)',
     },
     dontLogToConsole: {
         type: 'boolean',
