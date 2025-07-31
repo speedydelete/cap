@@ -43,7 +43,9 @@ export type TokenTypeMap = {
 
 export type Token<T extends TokenType = TokenType> = TokenTypeMap[T];
 
-export function createToken<T extends TokenType>(type: T, value: string, file: string, line: number, col: number): Token<T> {
+export function createToken<T extends TokenType>(type: T, value: string, file: string, line: number, col: number): Token<T>;
+export function createToken<T extends TokenType>(type: T, value: string): Token<T>;
+export function createToken<T extends TokenType>(type: T, value: string, file: string = '__implicit__', line: number = 0, col: number = 0): Token<T> {
     let out: any = {type, value, stack: [{file, line, col, length: value.length}]};
     if (type === 'number') {
         out.numValue = parseInt(value);
