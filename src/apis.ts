@@ -10,7 +10,7 @@ export let argv: string[];
 export let dir: string;
 export let exit: (code: number) => never;
 export let cwd: () => string;
-export let createRequire: (path: string) => ((path: string) => Promise<any>);
+export let requireFrom: (path: string, module: string) => Promise<any>;
 
 let stdout = '';
 let stderr = '';
@@ -77,7 +77,7 @@ if (typeof window === 'object' && window === globalThis) {
     argv = [];
     dir = '/lib';
     cwd = () => '/';
-    function _createRequire<T extends boolean>(startPath: string, sync: T): (path: string) => (T extends true ? any : Promise<any>) {
+    function createRequire<T extends boolean>(startPath: string, sync: T): (path: string) => (T extends true ? any : Promise<any>) {
         return function(path) {
             let fullPath = toAbsolute(join(startPath, path));
             let code: string | undefined;
@@ -103,10 +103,13 @@ if (typeof window === 'object' && window === globalThis) {
                     let module = {
                         exports,
                         createRequire(path2: string) {
-                            return _createRequire(join(path, path2), true);
+                            if (!isAbsolute(path2)) {
+                                path2 = join(path, path2);
+                            }
+                            return createRequire(path2, true);
                         },
                     };
-                    let require = _createRequire(fullPath, true);
+                    let require = createRequire(fullPath, true);
                     let index = fullPath.lastIndexOf('/');
                     let __dirname = fullPath.slice(0, index);
                     let __filename = fullPath.slice(index);
@@ -124,7 +127,7 @@ if (typeof window === 'object' && window === globalThis) {
             }
         };
     }
-    createRequire = path => _createRequire(path, false);
+    requireFrom = (path, module) => createRequire(path, false)(module);
 } else {
     ({join, dirname, isAbsolute} = await import('node:path'));
     let fs = await import('node:fs/promises');
@@ -133,22 +136,19 @@ if (typeof window === 'object' && window === globalThis) {
     exists = (await import('node:fs')).existsSync;
     ({env, argv, exit, cwd} = process);
     dir = import.meta.dirname;
-    let nodeCreateRequire = (await import('node:module')).createRequire;
-    createRequire = path => {
-        let require = nodeCreateRequire(path);
-        return async path2 => {
-            try {
-                return require(path2);
-            } catch {
-                if (isAbsolute(path2)) {
-                    try {
-                        return await import(path2);
-                    } catch (error) {
-                        return await import('file:///' + path2);
-                    }
-                } else {
-                    return await import(join(path, path2));
+    let createRequire = (await import('node:module')).createRequire;
+    requireFrom = async (path, module) => {
+        try {
+            return createRequire(path)(module);
+        } catch {
+            if (isAbsolute(module)) {
+                try {
+                    return await import(module);
+                } catch (error) {
+                    return await import('file:///' + module);
                 }
+            } else {
+                return await import(join(path, module));
             }
         }
     };
