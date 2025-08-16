@@ -1,145 +1,131 @@
 
-rule B3/S23
+#rule B3/S23
 
-// still lifes
-block = 2o$2o!
-beehive = b2ob$o2bo$b2ob!
-loaf = b2ob$o2bo$bobo$2b2o!
-boat = bob$obo$2ob!
-ship = b2o$obo$2ob!
-tub = bob$obo$bob!
-pond = b2ob$o2bo$o2bo$b2ob!
-long_boat = bo2b$obob$bobo$2b2o!
-ship_tie = 2o4b$obo3b$b2o3b$3b2ob$3bobo$4b2o!
-barge = bo2b$obob$bobo$2bo!
-half_bakery = 5bo$4bobo$3bo2bo$2bob2o$bobo$o2bo$b2o!
-mango = b2o2b$o2bob$bo2bo$2b2o!
-eater_1 = 2o2b$obob$2bob$2b2o!
-long_barge = bo3b$obo2b$bobob$2bobo$3bo!
-aircraft_carrier = 2o2b$o2bo$2b2o!
-paperclip = 2b2ob$bo2bo$bob2o$2obob$o2bob$b2o!
-long_ship = 2o2b$obob$bobo$2b2o!
-integral_sign = 3b2o$2bobo$2bo2b$obo2b$2o!
-shillelagh = 2o3b$o2b2o$b2obo!
-boat_tie = bo4b$obo3b$b2o3b$3b2ob$3bobo$4bo!
-snake = 2obo$ob2o!
-big_s = 4b2ob$3bo2bo$3bob2o$2obo3b$o2bo3b$b2o!
-bi_pond = b2o4b$o2bo3b$o2bo3b$b2ob2ob$3bo2bo$3bo2bo$4b2o!
-trans_boat_with_tail = 2o3b$obo2b$bobob$3bob$3b2o!
-boat_tie_ship = 2o$obo$b2o$3b2o$3bobo$4bo!
-hat = 2bo2b$bobob$bobob$2ob2o!
-long2_ship = 2o$obo$bobo$2bobo$3b2o!
-very_long_ship = long2_ship
-long2_boat = bo$obo$bobo$2bobo$3b2o!
-very_long_boat = long2_boat
-tub_with_tail = bo3b$obo2b$bobob$3bob$3b2o!
-mirrored_table = 2ob2o$bobo$bobo$2ob2o!
-dead_spark_coil = 2o3b2o$obobobo$2bobo2b$obobobo$2o3b2o!
-canoe = 3b2o$4bo$3bob$obo2b$2o!
-beehive_on_dock = 2o3bo$obobobo$2bobobo$2bo2bo$obo$2o!
-cis_mirrored_bun = bo3bo$obobobo$obobobo$b2ob2o!
-moose_antlers = 2o5b2o$o7bo$b3ob3ob$3bobo3b$4bo!
-block_on_table = 2b2o$2b2o2$4o$o2bo!
-block_on_dock = 2o$obob2o$2bob2o$2bo$obo$2o!
-scorpion = 3bo3b$b3o3b$o3b2ob$obobobo$b2obobo$5bo!
-beehive_with_tail = b2o3b$o2bo2b$b2obob$4bob$4b2o!
-twin_hat = 2bo3bo2b$bobobobob$bobobobob$2obobob2o$4bo!
-loop = b2o2b$o2bob$bobob$2ob2o!
-long_snake = 2o3b$obobo$3b2o!
-fourteener = 4b2ob$2o2bobo$o5bo$b5ob$3bo!
-cis_mirrored_bookend = 2o3b2o$obobobo$2bobo$b2ob2o!
-cis_boat_with_tail = 3b2o$3bob$2obob$obo2b$bo!
-cis_rotated_bookend = 4b2o$2o2bo$obobobo$2bo2b2o$b2o!
-elevener = 4b2o$3bobo$3bo2b$b3o2b$o5b$2o!
-mirrored_dock = 2o2b2o$o4bo$b4ob2$b4ob$o4bo$2o2b2o!
-block_on_cap = b2o$o2bo$4o2$2o$2o!
-trans_loaf_with_tail = 2o4b$bo4b$bob2ob$2bo2bo$3bobo$4bo!
 
-// oscillators
-blinker = 3o!
-toad = b3o$3o!
-beacon = 2o2b$o3b$3bo$2b2o!
-pulsar = 2b3o3b3o2b2$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o2b2$2b3o3b3o2b$o4bobo4bo$o4bobo4bo$o4bobo4bo2$2b3o3b3o!
-pentadecathlon = 2bo4bo2b$2ob4ob2o$2bo4bo!
-clock = 2bob$obob$bobo$bo!
-bipole = 2o3b$obo2b2$2bobo$3b2o!
-quadpole = 2o5b$obo4b2$2bobo2b2$4bobo$5b2o!
-great_on_off = 2b2o4b$bo2bo3b$bobo4b$2obo2bob$4b2obo$7bo$4b3ob$4bo!
-figure_eight = 2o4b$2obo2b$4bob$bo4b$2bob2o$4b2o!
-spark_coil = 2o4b2o$obo2bobo$2bo2bo2b$obo2bobo$2o4b2o!
-mold = 3b2ob$2bo2bo$o2bobo$4bob$ob2o2b$bo!
-tripole = 2o4b$obo3b2$2bobob$5bo$4b2o!
-mazing = 3b2o2b$bobo3b$o5bo$bo3b2o2$3bobob$4bo!
-blocker = 6bobob$5bo4b$2o2bo4bo$2obo2bob2o$4b2o!
-jam = 3b2ob$2bo2bo$o2bobo$o3bob$o5b$3bo2b$b2o!
-trans_queen_bee_shuttle = 9bo12b$7bobo12b$6bobo11b2o$2o3bo2bo11b2o$2o4bobo13b$7bobo12b$9bo!
-cis_queen_bee_shuttle = 9bo$7bobo$6bobo$2o3bo2bo11b2o$2o4bobo11b2o$7bobo$9bo!
-test_tube_baby = 2o4b2o$obo2bobo$2bo2bo2b$2bo2bo2b$3b2o!
-achims_p4 = 2b2o3b2o2b$bo2bobo2bob$bob2ob2obob$2o7b2o$2bobobobo2b$2o7b2o$bob2ob2obob$bo2bobo2bob$2b2o3b2o!
-octagon_2 = 3b2o3b$2bo2bo2b$bo4bob$o6bo$o6bo$bo4bob$2bo2bo2b$3b2o!
-unix = b2o5b$b2o5b2$bo6b$obo5b$o2bo2b2o$4bob2o$2b2o!
-tub_test_tube_baby = bo6bob$obo4bobo$bobo2bobob$3bo2bo3b$3bo2bo3b$4b2o!
-tumbler = bo5bob$obo3bobo$o2bobo2bo$2bo3bo2b$2b2ob2o!
-block_on_griddle = 3bo$bobo$o4bo$6o2$2b2o$2b2o!
-fore_and_back = 2ob2o2b$2obobob$6bo$3ob3o$o6b$bobob2o$2b2ob2o!
-trans_block_on_candlefobra = 2o$2o2$4o$o3bo$3bo$3bo$2bo$bobo$2bo!
-caterer = 2bo5b$o3b4o$o3bo3b$o7b$3bo4b$b2o!
-coes_p8 = 2o10b$2o2b2o6b$5b2o5b$4bo2bo4b$7bo2b2o$5bobo2b2o!
-beehive_on_griddle = 3bo$bobo$o4bo$6o2$2b2o$bo2bo$2b2o!
-cis_block_on_candlefrobra = 2b2o$2b2o2$4o$o3bo$3bo$3bo$2bo$bobo$2bo!
-four_boats = 3bo$2bobo$bob2o$obo2b2o$b2o2bobo$3b2obo$3bobo$4bo!
-eater_plug = 7bo$5b3o$4bo3b$5bo2b$2bo2bo2b$bob2o3b$bo6b$2o!
-odd_test_tube_baby = 7bob$2o4bobo$obo2bobob$2bo2bo3b$2bo2bo3b$3b2o!
-fox = 4bo2b$4bo2b$2bo2bob$2o5b$4bobo$2bobobo$6bo!
-fumarole = 3b2o3b$bo4bob$bo4bob$bo4bob$2bo2bo2b$obo2bobo$2o4b2o!
+export const block = 2o$2o!
+export const beehive = b2o$o2bo$b2o!
+export const loaf = b2o$o2bo$bobo$2bo!
+export const boat = bo$obo$2o!
+export const ship = b2o$obo$2o!
+export const tub = bo$obo$bo!
+export const pond = b2o$o2bo$o2bo$b2o!
+export const long_boat = 2bo$bobo$obo$2o!
+export const ship_tie = 4b2o$3bobo$3b2o$b2o$obo$2o!
+export const barge = 2bo$bobo$obo$bo!
+export const half_bakery = 5bo$4bobo$3bo2bo$2bob2o$bobo$o2bo$b2o!
+export const mango = b2o$o2bo$bo2bo$2b2o!
+export const eater_1 = 2o$obo$2bo$2b2o!
+export const long_barge = 3bo$2bobo$bobo$obo$bo!
+export const aircraft_carrier = 2o$o2bo$2b2o!
+export const paperclip = 2b2o$bo2bo$bob2o$2obo$o2bo$b2o!
+export const long_ship = 2b2o$bobo$obo$2o!
+export const integral_sign = 2o$obo$2bo$2bobo$3b2o!
+export const shillelagh = 2o$o2b2o$b2obo!
+export const boat_tie = 4bo$3bobo$3b2o$b2o$obo$bo!
+export const snake = ob2o$2obo!
+export const big_s = 4b2o$3bo2bo$3bob2o$2obo$o2bo$b2o!
+export const bi_pond = b2o$o2bo$o2bo$b2ob2o$3bo2bo$3bo2bo$4b2o!
+export const boat_tie_ship = 4bo$3bobo$3b2o$b2o$obo$2o!
+export const hat = 2bo$bobo$bobo$2ob2o!
+export const canoe = 3b2o$4bo$3bo$obo$2o!
+export const moose_antlers = 2o5b2o$o7bo$b3ob3o$3bobo$4bo!
+export const scorpion = 3bo$b3o$o3b2o$obobobo$b2obobo$5bo!
+export const loop = b2o$o2bo$bobo$2ob2o!
+export const long_snake = 3b2o$obobo$2o!
+export const fourteener = 4b2o$2o2bobo$o5bo$b5o$3bo!
+export const elevener = 2o$obo$2bo$2b3o$5bo$4b2o!
+export const long_integral = 2o$obo$2bo$bo$bobo$2b2o!
 
-// spaceships
-glider = bob$2bo$3o!
-lwss = b3o$o2bo$3bo$3bo$obo!
-mwss = 2b3o$bo2bo$4bo$o3bo$4bo$bobo!
-hwss = 2b3o$bo2bo$4bo$o3bo$o3bo$4bo$bobo!
-weekender = bo12bob$bo12bob$obo10bobo$bo12bob$bo12bob$2bo3b4o3bo2b$6b4o6b$2b4o4b4o2b2$4bo6bo4b$5b2o2b2o!
-spider = 9bo7bo9b$3b2obobob2o3b2obobob2o3b$3obob3o9b3obob3o$o3bobo5bobo5bobo3bo$4b2o6bobo6b2o4b$b2o9bobo9b2ob$b2ob2o15b2ob2ob$5bo15bo!
-loafer = b2o2bob2o$o2bo2b2o$bobo$2bo$8bo$6b3o$5bo$6bo$7b2o!
-copperhead = b2o2b2o$3b2o$3b2o$obo2bobo$o6bo2$o6bo$b2o2b2o$2b4o2$3b2o$3b2o!
-lobster = 12b3o$12bo$13bo2b2o$16b2o$12b2o$13b2o$12bo2bo2$14bo2bo$14bo3bo$15b3obo$20bo$2o2bobo13bo$obob2o13bo$o4bo2b2o13b2o$6bo3bo6b2o2b2o2bo$2b2o6bo6bo2bo$2b2o4bobo4b2o$9bo5bo3bo3bo$10bo2bo4b2o$11b2o3bo5bobo$15bo8b2o$15bo4bo$14bo3bo$14bo5b2o$15bo5bo!
-walrus = 4b6o$6b2o$3bo5b2o$b8obo$4o3bo$o9b3o$3b2o3b2ob2o2b2o$2b3o2b5ob3o2bo$bob2obobo2b3o4bo$2obo3bo4b3o4bo$7bo$2bo$3b2o$8b3o$8bo2$9bo$6b2ob2o!
-two_engine_cordership = 19b2o$19b4o$19bob2o2$20bo$19b2o$19b3o$21bo$33b2o$33b2o7$36bo$35b2o$34bo3bo$35b2o2bo$40bo$37bobo$38bo$38bo$38b2o$38b2o3$13bo10bo$12b5o5bob2o11bo$11bo10bo3bo9bo$12b2o8b3obo9b2o$13b2o9b2o12bo$2o13bo21b3o$2o35b3o7$8b2o$8b2o11b2o$19b2o2bo$24bo3bo$18bo5bo3bo$19bo2b2o3bobo$20b3o5bo$28bo!
-sir_robin = 4bo$5b2o2$5bo$4b2o$2b2ob2o$3o3b2o$bo4b3o$bo4b3o$3b2o$2o2bobo$2bo2bob2o$obob3o2bo$obo2b2o$bo5b3o$7b2o$3b3o$2b2o2bo$2bo$4bobo$6bo4b3o$4b2ob4o$6b4o4bo$10bo$12bo$6b5obo$6b3ob3o$6bo4bo$7b5o$10bo$6bob2o$9bo$3bo3b2o$bo2bo2b4o$b2o3bo3b2o$b3obo6bo$6b2o3bo$3bo3bo3bo$2bobo3bobo$2bo6b3o$4b2o$5b5o$9b2o$6b2o2bo$11bo$6b2o4b4obo$6b2o4bob4o$9b3ob2o4bo$13bo2bo3bo$13bob3obo$12bo2b3o$13b2o$16b3o$8b5o5bo$8bo6bo3bo$9bo9bo2$10b3o6bo$11bobob2o$11bo3bobobo$11bo6b3o$13bobobo2bo$14b2o2bobo$12bo2bo3b2o$12bob3ob2o$12bo6b2o$14b2obo$14bo4bo7b2o$15bo2b2o2b3o$25bo3bo$19b2o9bo$15bo3b2o4b4o$15b3o6bo4bo$17b4o4b2obo$17b4o6b2o$22b3o$22bo3bo$23bo2bo$25b2o!
+export const blinker = 3o!
+export const toad = b2o$o$3bo$b2o!
+export const beacon = 2o$2o$2b2o$2b2o!
+export const pulsar = 2b3o3b3o2$o4bobo4bo$o4bobo4bo$o4bobo4bo$2b3o3b3o2$2b3o3b3o$o4bobo4bo$o4bobo4bo$o4bobo4bo2$2b3o3b3o!
+export const pentadecathlon = 2bo4bo$2ob4ob2o$2bo4bo!
+export const clock = 2bo$obo$bobo$bo!
+export const bipole = 3b2o$2bobo2$obo$2o!
+export const quadpole = 5b2o$4bobo2$2bobo2$obo$2o!
+export const great_on_off = 2b2o$bo2bo$bobo$2obo2bo$4b2obo$7bo$4b3o$4bo!
+export const figure_eight = 3o$3o$3o$3b3o$3b3o$3b3o!
+export const spark_coil = 2o4b2o$obo2bobo$2bo2bo$obo2bobo$2o4b2o!
+export const mold = 3b2o$2bo2bo$o2bobo$4bo$ob2o$bo!
+export const tripole = 4b2o$3bobo2$bobo$o$2o!
+export const mazing = 3b2o$bobo$o5bo$bo3b2o2$3bobo$4bo!
+export const blocker = 6bobo$5bo$2o2bo4bo$2obo2bob2o$4b2o!
+export const jam = 3b2o$2bo2bo$o2bobo$o3bo$o$3bo$b2o!
 
-// polyominos
-dot = o!
-domino = 2o!
-pre_block = ob$2o!
-t_tetromino = 3o$bob!
-i_tetromino = 4o!
-j_tetromino = 3o$2bo!
-z_tetromino = 2ob$b2o!
-o_pentomino = 5o!
-p_pentomino = 2o$2o$ob!
-crotchet = p_pentomino
-q_pentomino = 4o$3bo!
-r_pentomino = b2o$2ob$bob!
-s_pentomino = 2b2o$3ob!
-t_pentomino = 3o$bob$bob!
-u_pentomino = obo$3o!
-v_pentomino = o2b$o2b$3o!
-w_pentomino = o2b$2ob$b2o!
-x_pentomino = bob$3o$bob!
-y_pentomino = 2obo$4o!
-z_pentomino = 2ob$bob$b2o!
-b_heptomino = ob2o$3ob$bo!
-bullet_heptomino = bob$3o$3o!
-c_heptomino = b3o$3ob$bo!
-crinkly_heptomino = 4o$o2b2o!
-e_heptomino = b3o$2o$b2o!
-f_heptomino = 2o$bo$bo$b3o!
-herschel = o2b$3o$obo$2bo!
-i_heptomino = 2o$bo$b2o$2b2o!
-pi_heptomino = 3o$obo$obo!
+export const glider = bo$2bo$3o!
+export const lwss = 3o$o2bo$o$o$bobo!
+export const mwss = 3o$o2bo$o$o3bo$o$bobo!
+export const hwss = 3o$o2bo$o$o3bo$o3bo$o$bobo!
+export const coe_ship = 3o4bo$o2bo2b3o$o4b2obo$o3b4o$o5b2o$o2bo$b2o$bo$2bo$2bo!
+export const sidecar = 6b3o$3o3bo2bo$o2bo2bo$o5bo$o3bobo$o3bo$o5b3o$bobo!
+export const light_schick_engine = 3o3b3o$o2bobo2bo$o7bo$o7bo$bobobobo2$4bo$3b3o$2b2ob2o$3b3o$3b3o$3b3o$3bobo$3bobo$4bo!
+export const middle_schick_engine = 3o3b3o$o2bobo2bo$o7bo$o7bo$o7bo$bobobobo2$4bo$3b3o$2b2ob2o$3b3o$3b3o$3b3o$3bobo$3bobo$4bo!
+export const heavy_schick_engine = 3o3b3o$o2bobo2bo$o7bo$o7bo$o7bo$o7bo$bobobobo2$4bo$3b3o$2b2ob2o$3b3o$3b3o$3b3o$3bobo$3bobo$4bo!
+export const asymmetric_schick_engine = 6b3o$5bo2bo$3o5bo$o2bo4bo$o7bo$o7bo$bobobobo2$4bo$3b3o$2b2ob2o$3b3o$3b3o$3b3o$3bobo$3bobo$4bo!
+export const loafer = b2o2bob2o$o2bo2b2o$bobo$2bo$8bo$6b3o$5bo$6bo$7b2o!
+export const x66 = b3o3b3o$bo2bobo2bo$o3bobo3bo$2bobobobo$2bo5bo$2b2o3b2o$3b2ob2o$3b2ob2o$2bo5bo!
+export const copperhead = b2o2b2o$3b2o$3b2o$obo2bobo$o6bo2$o6bo$b2o2b2o$2b4o2$3b2o$3b2o!
+export const dart = 7bo$6bobo$5bo3bo$6b3o2$4b2o3b2o$2bo3bobo3bo$b2o3bobo3b2o$o5bobo5bo$bob2obobob2obo!
 
-// misc
-switch_engine = bobo2b$o5b$bo2bob$3b3o!
-queen_bee = 3bo3b$2bobo2b$bo3bob$2b3o2b$2o3b2o!
-tail = ob$ob$2o!
-table = 4o$o2bo!
+export function longn_tub(n) {
+    o! (n + 1) 0
+    for (let i = 0; i <= n; i++) {
+        obo! (n - i) (i + 1)
+    }
+    o! 1 (n + 2)
+}
+
+export function longn_boat(n) {
+    longn_tub(n)
+    o! 0 (n + 2)
+}
+
+export function longn_ship(n) {
+    longn_tub(n)
+    o! (n + 2) 0
+    o! 0 (n + 2)
+}
+
+
+export const gne1 = 3o$o$bo!
+export const gne2 = bo$2o$obo!
+export const gne3 = 2o$obo$o!
+export const gne4 = b2o$2o$2bo!
+export const gnw1 = 3o$2bo$bo!
+export const gnw2 = bo$b2o$obo!
+export const gnw3 = b2o$obo$2bo!
+export const gnw4 = 2o$b2o$o!
+export const gse1 = bo$2bo$3o!
+export const gse2 = obo$b2o$bo!
+export const gse3 = 2bo$obo$b2o!
+export const gse4 = o$b2o$2o!
+export const gsw1 = bo$o$3o!
+export const gsw2 = obo$2o$bo!
+export const gsw3 = o$obo$2o!
+export const gsw4 = 2bo$2o$b2o!
+
+export const herschel = o$obo$3o$2bo!
+export const b_heptomino = 2o$b2o$2o$o!
+export const r_pentomino = b2o$2o$bo!
+export const pi_heptomino = 3o$2bo$3o!
+
+export const h = o$obo$3o$2bo!
+export const r = b2o$2o$bo!
+export const b = 2o$b2o$2o$o!
+export const pi = 3o$2bo$3o!
+
+export const t_tetromino = 3o$bo!
+export const tail = o$o$2o!
+
+export const house = b3o$o3bo$2ob2o!
+export const bookend = 2o2b$o2bo$b3o!
+export const bun = b2o$o2bo$b3o!
+export const teardrop = b3o$o2bo$o2bo$b2o!
+export const wing = b2o$o2bo$bobo$2b2o!
+export const dove = b2o$o2bo$bo2bo$2b3o!
+export const cover = 4bo$2b3o$bo$bo$2o!
+export const table = o2bo$4o!
+export const dock = 2o2b2o$o4bo$b4o!
+export const cap = b2o$o2bo$4o!
+export const long_bookend = 2o3b$o3bo$b4o!

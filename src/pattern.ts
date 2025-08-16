@@ -1,5 +1,5 @@
 
-import {Token, error, ERROR_TOKEN_TYPES, assertTokenType, splitByNewlines} from './tokenizer.js';
+import {Token, Transform, createToken, error, ERROR_TOKEN_TYPES, assertTokenType, splitByNewlines, isKeyword} from './tokenizer.js';
 import {runPattern} from './runner.js';
 
 
@@ -17,6 +17,10 @@ export class Pattern {
     data: number[][];
     height: number;
     width: number;
+    ruleToken: Token<'directive'> | undefined = undefined;
+
+    _absX: number = 0;
+    _absY: number = 0;
 
     constructor(data: number[][] | Pattern = []) {
         if (data instanceof Pattern) {
@@ -114,7 +118,7 @@ export class Pattern {
         return this;
     }
 
-    addRow(row: number[]): void {
+    addRow(row: number[], position?: number): this {
         if (row.length > this.width) {
             this.resize(this.height, row.length);
         } else if (row.length < this.width) {
@@ -122,8 +126,13 @@ export class Pattern {
                 row.push(0);
             }
         }
-        this.data.push(row);
+        if (position) {
+            this.data.splice(position, 0, row);
+        } else {
+            this.data.push(row);
+        }
         this.height++;
+        return this;
     }
     
     transpose(): this {
@@ -142,25 +151,25 @@ export class Pattern {
         return this;
     }
 
-    applyTransform(token: Token<'transform'>): this {
-        for (let char of token.value) {
-            if (char === 'R') {
-                this.transpose().reverseRows();
-            } else if (char === 'L') {
-                this.transpose().reverseColumns();
-            } else if (char === 'B') {
-                this.reverseRows().reverseColumns();
-            } else if (char === 'X') {
-                this.reverseRows();
-            } else if (char === 'Y') {
-                this.reverseColumns();
-            } else if (char === 'T' || char === 'D') {
-                this.transpose();
-            } else if (char === 'A') {
-                this.reverseRows().transpose().reverseRows();
-            } else if (char !== 'N') {
-                error('SyntaxError: Invalid transformation', token);
-            }
+    applyTransform(transform: Transform, token?: Token): this {
+        if (transform === 'F') {
+            return this;
+        } else if (transform === 'Fx') {
+            this.reverseRows();
+        } else if (transform === 'R') {
+            this.transpose().reverseColumns();
+        } else if (transform === 'Rx') {
+            this.transpose();
+        } else if (transform === 'B') {
+            this.reverseRows().reverseColumns();
+        } else if (transform === 'Bx') {
+            this.reverseColumns();
+        } else if (transform === 'L') {
+            this.transpose().reverseRows();
+        } else if (transform === 'Lx') {
+            this.transpose().reverseRows().reverseColumns();
+        } else {
+            throw new Error(`Invalid transform: ${transform}`);
         }
         return this;
     }
@@ -246,9 +255,12 @@ export class Pattern {
     }
 
     static fromTokens(tokens: Token[]): Pattern {
+        if (tokens.length === 0) {
+            return new Pattern();
+        }
         let lines = splitByNewlines(tokens);
-        let patterns: [number, number, Pattern][] = [];
-        let rule: Token<'rule'> = {type: 'rule', value: 'rule B3/S23', rule: 'B3/S23', stack: [{file: '<implicit>', line: 0, col: 0}]};
+        let patterns: Pattern[] = [];
+        let rule: Token<'directive'> = createToken('directive', '#rule B3/S23');
         for (let line of lines) {
             if (line.length === 0) {
                 continue;
@@ -281,23 +293,27 @@ export class Pattern {
             } else if (line[0].type === 'apgcode') {
                 pattern = Pattern.fromApgcode(line[0]);
                 line.shift();
-            } else if (line[0].type === 'rule') {
-                rule = line[0];
+            } else if (line[0].type === 'directive') {
+                if (line[0].value.startsWith('#rule ')) {
+                    rule = line[0];
+                }
                 continue;
+            } else if (line[0].type === '!') {
+                pattern = new Pattern();
+                line.shift();
             } else {
                 error(`SyntaxError: Expected RLE, left bracket, apgcode, or rule statement, got ${ERROR_TOKEN_TYPES[line[0].type]}`, line[0]);
             }
-            let shiftX = 0;
-            let shiftY = 0;
+            pattern.ruleToken = rule;
             for (let i = 0; i < line.length; i++) {
                 let token = line[i];
                 if (token.type === 'number') {
                     let yCoord = line[++i];
                     assertTokenType(yCoord, 'number');
-                    shiftX += token.numValue;
-                    shiftY += yCoord.numValue;
-                } else if (token.type === 'transform') {
-                    pattern.applyTransform(token);
+                    pattern._absX += token.numValue;
+                    pattern._absY += yCoord.numValue;
+                } else if (isKeyword(token) && (token.value === 'F' || token.value === 'Fx' || token.value === 'R' || token.value === 'Rx' || token.value === 'B' || token.value === 'Bx' || token.value === 'L' || token.value === 'Lx')) {
+                    pattern.applyTransform(token.value);
                 } else if (token.type === '@') {
                     let generations = line[++i];
                     assertTokenType(generations, 'number');
@@ -308,18 +324,25 @@ export class Pattern {
                     error(`SyntaxError: Unexpected ${ERROR_TOKEN_TYPES[token.type]}`, token);
                 }
             }
-            patterns.push([shiftX, shiftY, pattern]);
+            patterns.push(pattern);
         }
         let out = new Pattern();
-        let offsetX = -Math.min(...patterns.map(x => x[0]));
-        let offsetY = -Math.min(...patterns.map(x => x[1]));
-        for (let [shiftX, shiftY, pattern] of patterns) {
-            out.setFrom(pattern, shiftX + offsetX, shiftY + offsetY, false);
+        out.ruleToken = rule;
+        let offsetX = -Math.min(...patterns.map(x => x._absX));
+        let offsetY = -Math.min(...patterns.map(x => x._absY));
+        for (let pattern of patterns) {
+            out.setFrom(pattern, pattern._absX + offsetX, pattern._absY + offsetY, false);
         }
         return out;
     }
 
-    toRLE(rule: string): string {
+    toRLE(rule?: string): string {
+        if (!rule) {
+            if (!this.ruleToken) {
+                throw new Error(`No rule or rule token provided`);
+            }
+            rule = this.ruleToken.value.slice('#rule '.length);
+        }
         let beforeRLE = '';
         for (let row of this.data) {
             if (row !== undefined) {

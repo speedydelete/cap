@@ -68,25 +68,55 @@ bi_block = [
     block 3 0
 ]
 
-// standard library
-includestd life.cap
-
-// importing from url's
-import block from data:text/plain;base64,eCA9IDIsIHkgPSAyLCBydWxlID0gQjMvUzIzCm9vJG9vIQ==
-
 // apgcodes
-blinker = xp2_7
+let blinker = xp2_7
 blinker 4 0
 // anything matching /^(x[spq]\d+|apg)_/ is an apgcode
 
 // functions
-my_function = { (a, b)
+let my_function = { (a, b)
     a 0 0
     b 3 0
 }
 my_function(block, blinker)
 
+// alternate syntax
+function my_function(a, b) {
+    a 0 0
+    b 3 0
+}
+
+// you can also use return (with no argument) to end early
+
 // running patterns
 glider @1 2 2 R // glider at generation 1 at (2, 2), rotated right
+
+// imports
+import block, blinker from ./library.cap
+import switch_engine from https://example.com/switch_engine.rle
+import tub, ship from life.cap // no relative/absolute path means standard library, like in JS
+
+// expressions
+block (2 * 2) 3
+
+// conditionals
+
+if (x > 0) {
+    block 0 0
+} else {
+    block 4 0
+}
+
+// loops
+
+for (let i = 0; i < 5; i++) {
+    block (i * 4) i
+}
+
+let i = 0
+while (i < 5) {
+    block (i * 4) i
+    i++
+}
 
 ```

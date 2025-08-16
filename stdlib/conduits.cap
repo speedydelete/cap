@@ -1,0 +1,20 @@
+
+export * from "life.cap"
+
+
+export function B60(input, output) {
+    [
+        12b2o5b2o$12b2o5b2o2$15b2o$15b2o! 0 0
+        input 6 9
+        output 0 0
+    ]
+}
+
+
+export function BFx59H(input, output) {
+    [
+        b2o$2bo$bo$b2o6$4b2o$4b2o! 0 0
+        input 0 9
+        output 21 9
+    ]
+}
