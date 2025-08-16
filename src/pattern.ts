@@ -7,6 +7,7 @@ const RLE_CHARS = '.ABCDEFGHIJKLMNOPQRSTUVWX';
 
 const APGCODE_CHARS = Object.fromEntries(Array.from('0123456789abcdefghijklmnopqrstuv', (char, i) => [char, Array.from(i.toString(2).padEnd(5, '0')).map(x => parseInt(x))]));
 const ZERO_STRIP = [0, 0, 0, 0, 0];
+const APGOCDE_AFTER_Y_CHARS = '0123456789abcdefghijklmnopqrstuvwxyz';
 
 let apgcodeCache = new Map<string, Pattern>();
 
@@ -222,14 +223,10 @@ export class Pattern {
                 } else if (char === 'x') {
                     transposed.push(ZERO_STRIP, ZERO_STRIP, ZERO_STRIP);
                 } else if (char === 'y') {
-                    let strNum = strip[++i];
-                    if (!'0123456789'.includes(strNum)) {
-                        error(`SyntaxError: Invalid character after 'y' in apgcode: ${strNum}`, token);
+                    let num = APGOCDE_AFTER_Y_CHARS.indexOf(strip[++i]);
+                    if (num === -1) {
+                        throw new Error(`Invalid character after 'y': '${strip[i]}'`);
                     }
-                    if ('0123456789'.includes(strip[i + 1])) {
-                        strNum += strip[++i];
-                    }
-                    let num = parseInt(strNum);
                     for (let i = 0; i < num; i++) {
                         transposed.push(ZERO_STRIP);
                     }
@@ -339,7 +336,7 @@ export class Pattern {
             beforeRLE += '$';
         }
         beforeRLE = beforeRLE.split('$').map(x => x.replace(/b+$/, '')).join('$').replaceAll(/^\$+|\$+$/g, '');
-        let out =  `x = ${this.width}, y = ${this.height}, rule = ${rule}\n`;
+        let out = `x = ${this.width}, y = ${this.height}, rule = ${rule}\n`;
         if (beforeRLE.length === 0) {
             return out + '!';
         }
