@@ -33,9 +33,11 @@
 }
 
 body {
-    padding: 30px;
+    margin: 0;
+    padding: 30px 40px;
     display: flex;
     flex-direction: row;
+    gap: 40px;
 }
 
 h2 {
@@ -58,6 +60,17 @@ h2 {
 #transitions th {
     background-color: #eaecf0;
     border: 1px solid #a2a9b1;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+#transitions > tr:not(:first-child) > th {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+#transitions > tr > td {
+    padding: 5px;
 }
 
 .transition {
@@ -65,8 +78,8 @@ h2 {
 }
 
 .transition-cell {
-    height: 10px;
-    width: 10px;
+    height: 15px;
+    width: 15px;
     border: 2px solid #bfbfbf;
 }
 
@@ -76,6 +89,40 @@ h2 {
 
 .transition-cell-2 {
     background-color: #000000;
+}
+
+textarea {
+    resize: none;
+}
+
+textarea:focus {
+    outline: none;
+}
+
+button {
+    font-family: inherit;
+    font-size: inherit;
+    background-color: inherit;
+    color: inherit;
+    border: 1px solid black;
+    padding: 3px 6px;
+}
+
+#rle-adder {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: start;
+}
+
+#patterns {
+    display: flex;
+    flex-direction: row;
+    overflow-y: auto;
+}
+
+body > div:last-of-type {
+    flex: 1;
 }
 
         </style>
@@ -98,7 +145,17 @@ h2 {
                 </tr>
             </table>
         </div>
-        <!-- <script>'use strict';function printError(e,c='red'){let x=String(e instanceof Error?('stack' in e?e.stack:e):e);if(document.readyState!=='complete'){alert(x);return;}document.querySelectorAll('body > *').forEach(x=>x.remove());let t = document.createElement('pre');t.style.color=c;t.style.paddingLeft='20px';t.style.paddingBottom='15px';t.style.fontFamily="'Courier New', Courier, monospace";t.style.fontSize='14px';t.style.overflowX='wrap';t.textContent=x.replaceAll(/file:\/\/\/media\/fuse\/drivefs-[0-9a-f]+\/root\/code\//g,'');document.body.appendChild(t);let l=setInterval(() => {}, 0);for(let j=1;j<=l;j++)clearInterval(j);}window.addEventListener('error',e=>{printError(e.error);return true;});window.addEventListener('unhandledrejection',e=>{e.preventDefault();printError(e.reason);});</script> -->
+        <div>
+            <h2>Patterns</h2>
+            <div id="rle-adder">
+                <textarea id="rle" placeholder="Enter RLE..." rows="10" cols="70"></textarea>
+                <button id="add">Add</button>
+            </div>
+            <div id="patterns"></div>
+        </div>
+        <div>
+            <h2>Rule combiner</h2>
+        </div>
         <script>
 
 'use strict';
