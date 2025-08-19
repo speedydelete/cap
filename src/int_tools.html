@@ -386,7 +386,7 @@ function parseTransition(num, minus, trs, type) {
         let outTrs = Object.keys(TRANSITIONS[num]).join('');
         for (let char of trs) {
             if (!outTrs.includes(char)) {
-                error(`RuleError: Invalid isotropic transition for ${num}: ${char}`);
+                error(`Invalid transition for ${num}: ${char}`);
             }
             outTrs = outTrs.replace(char, '');
         }
@@ -396,7 +396,7 @@ function parseTransition(num, minus, trs, type) {
     } else {
         for (let char of trs) {
             if (!(char in TRANSITIONS[num])) {
-                error(`RuleError: Invalid isotropic transition for ${num}: ${char}`);
+                error(`Invalid transition for ${num}: ${char}`);
             }
             out.push(type + num + char);
         }
@@ -426,7 +426,7 @@ function _parseTransitions(part, type) {
 }
 
 function parseTransitions(rule) {
-    let match = rule.match(/^B([0-9a-z]*)\/S([0-9a-z]*)$/);
+    let match = rule.match(/^B([0-9a-z-]*)\/S([0-9a-z]*)$/);
     if (!match) {
         error('Invalid rule!');
     }
