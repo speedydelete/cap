@@ -32,11 +32,18 @@
     box-sizing: border-box;
 }
 
+html, body {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+}
+
 body {
     margin: 0;
     padding: 30px 40px;
     display: flex;
-    flex-direction: row;
+    flex-flow: row wrap;
     gap: 40px;
 }
 
@@ -44,7 +51,7 @@ h2 {
     margin: 0;
     padding: 20px 0;
     font-weight: bold;
-    font-size: 24px;
+    font-size: 1.5rem;
     text-align: center;
 }
 
@@ -80,6 +87,10 @@ h2 {
 .transition-cell {
     height: 15px;
     width: 15px;
+    min-height: 15px;
+    min-width: 15px;
+    max-height: 15px;
+    max-width: 15px;
     border: 2px solid #bfbfbf;
 }
 
@@ -92,6 +103,8 @@ h2 {
 }
 
 textarea {
+    font-family: monospace;
+    font-size: 13px;
     resize: none;
 }
 
@@ -108,21 +121,85 @@ button {
     padding: 3px 6px;
 }
 
+#middle {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 60px);
+}
+
 #rle-adder {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 20px;
     align-items: start;
 }
 
-#patterns {
+#rle-adder-buttons {
+    width: 100%;
     display: flex;
     flex-direction: row;
-    overflow-y: auto;
 }
 
-body > div:last-of-type {
-    flex: 1;
+#clear {
+    margin-left: auto;
+}
+
+#patterns {
+    flex-grow: 1;
+    min-height: 0;
+    margin-top: 30px;
+    padding-right: 30px;
+    overflow-y: auto;
+    max-height: calc(100% - 234px - 2.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#patterns > * {
+    position: relative;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    border: 1px solid black;
+    background-color: #bfbfbf;
+}
+
+#patterns .type {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+#patterns .info {
+    white-space: pre-wrap;
+    color: #3f3f3f;
+}
+
+#patterns input[type=checkbox] {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+#patterns .link {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    color: #3366cc;
+    user-select: none;
+}
+
+#rc {
+    width: 400px;
+}
+
+#compute {
+    margin: 20px 0;
+}
+
+#compute-out {
+    white-space: pre-wrap;
 }
 
         </style>
@@ -145,16 +222,22 @@ body > div:last-of-type {
                 </tr>
             </table>
         </div>
-        <div>
+        <div id="middle">
             <h2>Patterns</h2>
             <div id="rle-adder">
                 <textarea id="rle" placeholder="Enter RLE..." rows="10" cols="70"></textarea>
-                <button id="add">Add</button>
+                <div id="rle-adder-buttons">
+                    <button id="add">Add</button>
+                    <button id="clear">Clear</button>
+                </div>
             </div>
             <div id="patterns"></div>
         </div>
-        <div>
+        <div id="rc">
             <h2>Rule combiner</h2>
+            <div>Select added patterns using the checkboxes and then press "Compute" to get the combined min/maxrule!</div>
+            <button id="compute">Compute</button>
+            <div id="compute-out"></div>
         </div>
         <script>
 
@@ -232,6 +315,29 @@ const TRANSITIONS = {
     }
 }
 
+function gridToNumber(a, b, c, d, e, f, g, h, i) {
+    return (a << 8) | (b << 7) | (c << 6) | (d << 5) | (e << 4) | (f << 3) | (g << 2) | (h << 1) | i;
+}
+
+let fullTransitions = {};
+for (let [number, letters] of Object.entries(TRANSITIONS)) {
+    let outLetters = {};
+    for (let [letter, t] of Object.entries(letters)) {
+        t = Array.from(t);
+        t[4] = 0;
+        let allTransitions = new Set();
+        allTransitions.add(t);
+        for (let j = 0; j < 10; j++) {
+            t = [t[6], t[3], t[0], t[7], t[4], t[1], t[8], t[5], t[2]];
+            allTransitions.add(gridToNumber(...t));
+            allTransitions.add(gridToNumber(t[2], t[1], t[0], t[5], t[4], t[3], t[8], t[7], t[6]));
+            allTransitions.add(gridToNumber(t[6], t[7], t[8], t[3], t[4], t[5], t[0], t[1], t[2]));
+        }
+        outLetters[letter] = Array.from(allTransitions);
+    }
+    fullTransitions[parseInt(number)] = outLetters;
+}
+
 window.addEventListener('load', () => {
     let table = document.getElementById('transitions');
     for (let transition of Object.keys(TRANSITIONS[4])) {
@@ -259,6 +365,539 @@ window.addEventListener('load', () => {
             row.appendChild(elt);
         }
         table.appendChild(row);
+    }
+});
+
+
+
+function error(msg) {
+    alert(msg);
+    throw new Error(msg);
+}
+
+
+function parseTransition(num, minus, trs, type) {
+    let out = [];
+    if (trs.length === 0) {
+        for (let char in TRANSITIONS[num]) {
+            out.push(type + num + char);
+        }
+    } else if (minus) {
+        let outTrs = Object.keys(TRANSITIONS[num]).join('');
+        for (let char of trs) {
+            if (!outTrs.includes(char)) {
+                error(`RuleError: Invalid isotropic transition for ${num}: ${char}`);
+            }
+            outTrs = outTrs.replace(char, '');
+        }
+        for (let char of outTrs) {
+            out.push(type + num + char);
+        }
+    } else {
+        for (let char of trs) {
+            if (!(char in TRANSITIONS[num])) {
+                error(`RuleError: Invalid isotropic transition for ${num}: ${char}`);
+            }
+            out.push(type + num + char);
+        }
+    }
+    return out;
+}
+
+function _parseTransitions(part, type) {
+    let out = [];
+    let num = parseInt(part[0]);
+    let minus = false;
+    let trs = '';
+    for (let char of part.slice(1)) {
+        if ('012345678'.includes(char)) {
+            out.push(...parseTransition(num, minus, trs, type));
+            num = parseInt(char);
+            minus = false;
+            trs = '';
+        } else if (char === '-') {
+            minus = true;
+        } else {
+            trs += char;
+        }
+    }
+    out.push(...parseTransition(num, minus, trs, type));
+    return out;
+}
+
+function parseTransitions(rule) {
+    let match = rule.match(/^B([0-9a-z]*)\/S([0-9a-z]*)$/);
+    if (!match) {
+        error('Invalid rule!');
+    }
+    return [].concat(_parseTransitions(match[1], 'B'), _parseTransitions(match[2], 'S'));
+}
+
+const ALL_TRANSITIONS = parseTransitions('B012345678/S012345678');
+
+function transitionsToParsedRule(trs) {
+    let out = new Uint8Array(512);
+    for (let [type, num, char] of trs) {
+        for (let tr of fullTransitions[num][char]) {
+            if (type === 'B') {
+                out[tr] = 1;
+            } else {
+                out[tr | (1 << 4)] = 1;
+            }
+        }
+    }
+    return out;
+}
+
+function _transitionsToRule(trs) {
+    let out = '';
+    for (let number = 0; number <= 8; number++) {
+        let letters = [];
+        let allLetters = Object.keys(TRANSITIONS[number]);
+        for (let letter of allLetters) {
+            if (trs.includes(number + letter)) {
+                letters.push(letter);
+            }
+        }
+        if (letters.length === 0) {
+            continue;
+        }
+        letters.sort();
+        out += number;
+        let normal = letters.join('');
+        if (letters.length !== allLetters.length) {
+            let minus = '-' + allLetters.filter(x => !letters.includes(x)).sort().join('');
+            if (minus.length < normal.length) {
+                out += minus;
+            } else {
+                out += normal;
+            }
+        }
+    }
+    return out;
+}
+
+function transitionsToRule(trs) {
+    let b = trs.filter(x => x[0] === 'B').map(x => x[1] + x[2]);
+    let s = trs.filter(x => x[0] === 'S').map(x => x[1] + x[2]);
+    return 'B' + _transitionsToRule(b) + '/S' + _transitionsToRule(s);
+}
+
+function parseRule(rule) {
+    return transitionsToParsedRule(parseTransitions(rule));
+}
+
+
+const GROW_UP = 1;
+const DONT_SHRINK_UP = 2;
+const GROW_DOWN = 4;
+const DONT_SHRINK_DOWN = 8;
+const GROW_LEFT = 16;
+const DONT_SHRINK_LEFT = 32;
+const GROW_RIGHT = 64;
+const DONT_SHRINK_RIGHT = 128;
+
+class Pattern {
+
+    data;
+    height;
+    width;
+    rule;
+    parsedRule = null;
+    x = 0;
+    y = 0;
+
+    constructor(height, width, rule, data) {
+        if (height instanceof Pattern) {
+            this.data = height.data;
+            this.height = height.height;
+            this.width = height.width;
+            this.rule = height.rule;
+            this.parsedRule = height.parsedRule;
+        } else {
+            this.data = data ?? new Uint8Array(height * width);
+            this.height = height;
+            this.width = width;
+            this.rule = rule;   
+        }
+    }
+
+    get population() {
+        return this.data.reduce((x, y) => x + y, 0);
+    }
+
+    static fromRLE(rle) {
+        let data = [[]];
+        let [firstLine, ...lines] = rle.split('\n');
+        let rule = 'B3/S23';
+        let match = firstLine.match(/^\s*x\s*=\s*(\d+)\s*,?\s*y\s*=\s*(\d+)\s*,?\s*(?:rule\s*=\s*(\S+)\s*)?$/);
+        console.log
+        if (match) {
+            if (typeof match[3] === 'string') {
+                rule = match[3];
+            }
+        } else {
+            error('Invalid RLE!');
+        }
+        let chars = lines.join('');
+        let row = [0];
+        let num = '';
+        for (let char of chars) {
+            if (char === '!') {
+                break;
+            } else if ('0123456789'.includes(char)) {
+                num += char;
+            } else if (char === 'b' || char === 'o') {
+                let elt = char === 'b' ? 0 : 1;
+                if (num === '') {
+                    row.push(elt);
+                } else {
+                    let count = parseInt(num);
+                    for (let i = 0; i < count; i++) {
+                        row.push(elt);
+                    }
+                    num = '';
+                }
+            } else if (char === '$') {
+                row.push(0);
+                data.push(row);
+                row = [0];
+                if (num !== '') {
+                    let count = parseInt(num);
+                    for (let i = 1; i < count; i++) {
+                        data.push([]);
+                    }
+                    num = '';
+                }
+            }
+        }
+        row.push(0);
+        data.push(row, []);
+        let width = Math.max(...data.map(x => x.length));
+        data.forEach(x => {
+            while (x.length < width) {
+                x.push(0);
+            }
+        });
+        return new Pattern(data.length, width, rule, new Uint8Array([].concat(...data)));
+    }
+
+    toRLE() {
+        let data = [];
+        for (let y = 0; y < this.height; y++) {
+            let row = [];
+            for (let x = 0; x < this.width; x++) {
+                row.push(this.data[y * this.width + x]);
+            }
+            data.push(row);
+        }
+        while (data[0].every(x => x === 0) && data.length > 0) {
+            data.shift();
+        }
+        while (data.at(-1)?.every(x => x === 0) && data.length > 0) {
+            data.pop();
+        }
+        while (data.every(x => x[0] === 0) && data[0]?.length > 0) {
+            data.forEach(x => x.shift());
+        }
+        while (data.every(x => x.at(-1) === 0) && data[0]?.length > 0) {
+            data.forEach(x => x.pop());
+        }
+        let beforeRLE = '';
+        for (let row of data) {
+            if (row !== undefined) {
+                for (let item of row) {
+                    if (item === 0) {
+                        beforeRLE += 'b';
+                    } else if (item === 1) {
+                        beforeRLE += 'o';
+                    } else {
+                        beforeRLE += RLE_CHARS[item];
+                    }
+                }   
+            }
+            beforeRLE += '$';
+        }
+        beforeRLE = beforeRLE.split('$').map(x => x.replace(/b+$/, '')).join('$').replaceAll(/^\$+|\$+$/g, '');
+        let out = `x = ${data[0] ? data[0].length : 0}, y = ${data.length}, rule = ${this.rule}\n`;
+        if (beforeRLE.length === 0) {
+            return out + '!';
+        }
+        let runLength = 1;
+        let runChar = beforeRLE[0];
+        for (let char of beforeRLE.slice(1)) {
+            if (runChar === char) {
+                runLength++;
+            } else {
+                if (runLength === 1) {
+                    out += runChar;
+                } else {
+                    out += runLength + runChar;
+                }
+                runChar = char;
+                runLength = 1;
+            }
+            if (out.lastIndexOf('\n') < out.length - 60) {
+                out += '\n';
+            }
+        }
+        if (runLength === 1) {
+            out += runChar;
+        } else {
+            out += runLength + runChar;
+        }
+        return out + '!\n';
+    }
+
+    runGeneration() {
+        if (!this.parsedRule) {
+            this.parsedRule = parseRule(this.rule);
+        }
+        let out = new Uint8Array(this.height * this.width);
+        let edgeStates = 0;
+        let i = 0;
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                let value = this.parsedRule[
+                    ((this.data[i - this.width - 1] || 0) << 8) |
+                    ((this.data[i - this.width    ] || 0) << 7) |
+                    ((this.data[i - this.width + 1] || 0) << 6) |
+                    ((this.data[i - 1             ] || 0) << 5) |
+                    ((this.data[i                 ] || 0) << 4) |
+                    ((this.data[i + 1             ] || 0) << 3) |
+                    ((this.data[i + this.width - 1] || 0) << 2) |
+                    ((this.data[i + this.width    ] || 0) << 1) |
+                    (this.data[i + this.width + 1] || 0)
+                ];
+                out[i] = value;
+                if (value) {
+                    if (y === 0) {
+                        edgeStates |= GROW_UP;
+                    }
+                    if (y === 1) {
+                        edgeStates |= DONT_SHRINK_UP;
+                    }
+                    if (y === this.height - 1) {
+                        edgeStates |= GROW_DOWN;
+                    }
+                    if (y === this.height - 2) {
+                        edgeStates |= DONT_SHRINK_DOWN;
+                    }
+                    if (x === 0) {
+                        edgeStates |= GROW_LEFT;
+                    }
+                    if (x === 1) {
+                        edgeStates |= DONT_SHRINK_LEFT;
+                    }
+                    if (x === this.width - 1) {
+                        edgeStates |= GROW_RIGHT;
+                    }
+                    if (x === this.width - 2) {
+                        edgeStates |= DONT_SHRINK_RIGHT;
+                    }
+                }
+                i++;
+            }
+        }
+        this.data = out;
+        let growTop = edgeStates & GROW_UP;
+        let shrinkTop = !(edgeStates & DONT_SHRINK_UP);
+        let growBottom = edgeStates & GROW_DOWN;
+        let shrinkBottom = !(edgeStates & DONT_SHRINK_DOWN);
+        let growLeft = edgeStates & GROW_LEFT;
+        let shrinkLeft = !(edgeStates & DONT_SHRINK_LEFT);
+        let growRight = edgeStates & GROW_RIGHT;
+        let shrinkRight = !(edgeStates & DONT_SHRINK_RIGHT);
+        let newHeight = this.height + (growTop ? 1 : 0) + (growBottom ? 1 : 0) - (shrinkTop ? 1 : 0) - (shrinkBottom ? 1 : 0);
+        let newWidth  = this.width + (growLeft ? 1 : 0) + (growRight  ? 1 : 0) - (shrinkLeft ? 1 : 0) - (shrinkRight ? 1 : 0);
+        let newData = new Uint8Array(newWidth * newHeight);
+        let yOffset = (growTop ? 1 : 0) - (shrinkTop ? 1 : 0);
+        let xOffset = (growLeft ? 1 : 0) - (shrinkLeft ? 1 : 0);
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                let val = out[y * this.width + x];
+                if (val) {
+                    let ny = y + yOffset;
+                    let nx = x + xOffset;
+                    if (ny >= 0 && ny < newHeight && nx >= 0 && nx < newWidth) {
+                        newData[ny * newWidth + nx] = val;
+                    }
+                }
+            }
+        }
+        this.height = newHeight;
+        this.width = newWidth;
+        this.data = newData;
+        this.y += shrinkTop ? 1 : 0;
+        this.y -= growTop ? 1 : 0;
+        this.x += shrinkLeft ? 1 : 0;
+        this.x -= growLeft ? 1 : 0;
+    }
+
+}
+
+
+function findType(pattern, gens) {
+    let p = new Pattern(pattern);
+    let pops = [p.population];
+    let ps = [p.data];
+    let coords = [[p.x, p.y]];
+    for (let i = 0; i < gens; i++) {
+        p.runGeneration();
+        pops.push(p.population);
+        ps.push(p.data);
+        coords.push([p.x, p.y]);
+        if (p.data.every((x, i) => x === pattern.data[i])) {
+            let x = p.x - pattern.x;
+            let y = p.y - pattern.y;
+            return {p: i + 1, x, y};
+        }
+    }
+    return {error: true};
+}
+
+function verifyType(pattern, type) {
+    if (type.error) {
+        return true;
+    }
+    let p = new Pattern(pattern);
+    for (let i = 0; i < type.p; i++) {
+        p.runGeneration();
+    }
+    return p.data.every((x, i) => x === pattern.data[i]) && p.x === type.x && p.y === type.y;
+}
+
+function typeToString(pattern, type) {
+    if (type.error) {
+        return '<cannot identify>';
+    }
+    if (type.x === 0 && type.y === 0) {
+        if (type.p === 1) {
+            return `${pattern.population}-cell still life`;
+        }
+        return `p${type.p} oscillator`;
+    } else {
+        return `(${type.x}, ${type.y})c/${type.p} spaceship`;
+    }
+}
+
+function identify(pattern, gens) {
+    let p = new Pattern(pattern);
+    let type = findType(p, gens);
+    let trs = parseTransitions(p.rule);
+    let min = trs.slice();
+    let max = trs.slice();
+    for (let tr of ALL_TRANSITIONS) {
+        let newTrs;
+        let index = trs.indexOf(tr);
+        if (index !== -1) {
+            newTrs = trs.toSpliced(index, 1);
+        } else {
+            newTrs = trs.concat(tr);
+        }
+        p.parsedRule = transitionsToParsedRule(newTrs);
+        if (verifyType(p, type)) {
+            if (index !== -1) {
+                min = min.toSpliced(min.indexOf(tr), 1);
+            } else {
+                max.push(tr);
+            }
+        }
+    }
+    p.parsedRule = parseRule(p.rule);
+    return {
+        type,
+        min,
+        max,
+        typeStr: typeToString(pattern, type),
+        minStr: transitionsToRule(min),
+        maxStr: transitionsToRule(max),
+        rle: pattern.toRLE(),
+    };
+}
+
+let patterns = [];
+
+let checkedPatterns = new Set();
+
+let rleTextarea = document.getElementById('rle');
+let patternsDiv = document.getElementById('patterns');
+
+function addPattern(pattern, save = true) {
+    patterns.push(pattern);
+    if (save) {
+        localStorage.intToolsPatterns = JSON.stringify(patterns);
+    }
+    let elt = document.createElement('div');
+    let typeElt = document.createElement('div');
+    typeElt.className = 'type';
+    typeElt.textContent = pattern.typeStr;
+    elt.appendChild(typeElt);
+    let infoElt = document.createElement('div');
+    infoElt.className = 'info';
+    infoElt.textContent = `Min: ${pattern.minStr}\nMax: ${pattern.maxStr}`;
+    elt.appendChild(infoElt);
+    let checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+            checkedPatterns.add(pattern);
+        } else {
+            checkedPatterns.delete(pattern);
+        }
+    });
+    elt.appendChild(checkbox);
+    let link = document.createElement('div');
+    link.className = 'link';
+    link.textContent = 'Copy';
+    link.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(pattern.rle);
+        alert('Copied!');
+    });
+    elt.appendChild(link);
+    if (patternsDiv.children.length === 0) {
+        patternsDiv.appendChild(elt);
+    } else {
+        patternsDiv.insertBefore(elt, patternsDiv.children[0]);
+    }
+}
+
+if (localStorage.intToolsPatterns) {
+    JSON.parse(localStorage.intToolsPatterns).forEach(addPattern);
+}
+
+document.getElementById('add').addEventListener('click', () => {
+    addPattern(identify(Pattern.fromRLE(rleTextarea.value), 5040));
+});
+
+document.getElementById('clear').addEventListener('click', () => {
+    localStorage.intToolsPatterns = '[]';
+    patterns = [];
+    checkedPatterns = new Set();
+    while (patternsDiv.lastElementChild) {
+        patternsDiv.removeChild(patternsDiv.lastElementChild);
+    }
+});
+
+let computeOut = document.getElementById('compute-out');
+
+document.getElementById('compute').addEventListener('click', () => {
+    let min = new Set();
+    let max = new Set(ALL_TRANSITIONS);
+    for (let pattern of checkedPatterns) {
+        for (let tr of pattern.min) {
+            min.add(tr);
+        }
+        for (let tr of Array.from(max)) {
+            if (!pattern.max.includes(tr)) {
+                max.delete(tr);
+            }
+        }
+    }
+    if (max.size === 0) {
+        computeOut.textContent = 'Patterns are incompatible';
+    } else {
+        computeOut.textContent = `Min: ${transitionsToRule(Array.from(min))}\nMax: ${transitionsToRule(Array.from(max))}`;
     }
 });
 
